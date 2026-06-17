@@ -4,6 +4,8 @@ Version : v1.0.1
 更新时间: 2026-06-17
 平台: Egern
 功能: NodeSeek 每日签到
+脚本参考：
+@Curtinp118   https://github.com/curtinp118/Scripthub/tree/main/scripts/nodeseek 
 使用说明:
 1. 添加 HTTP 请求脚本抓取请求头
 2. 添加定时任务自动签到
