@@ -1,11 +1,11 @@
 /******************************
-脚本名称: 流媒体与AI解锁
+脚本名称: NetUnlock
 Version : v1.0.1
 更新时间: 2026-06-23
 平台: Egern
 功能: 检测流媒体与AI解锁情况
-脚本参考：
-https://t.me/egern_app群友提供   @nullwhy二次修改
+脚本作者：
+https://t.me/egern_app群友提供      @nullwhy二次修改
 使用说明:
 1. 添加到Egern脚本
 2. 右上角添加小组件
