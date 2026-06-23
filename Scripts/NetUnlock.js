@@ -5,7 +5,7 @@ Version : v1.0.1
 平台: Egern
 功能: 检测流媒体与AI解锁情况
 脚本作者：
-https://t.me/egern_app群友提供      @nullwhy二次修改
+https://t.me/egern_app群友提供      @nullwhy二次适配
 使用说明:
 1. 添加到Egern脚本
 2. 右上角添加小组件
