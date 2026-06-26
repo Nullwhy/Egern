@@ -5,12 +5,13 @@ Version : v1.0.0
 平台: Egern
 功能: 机场流量用量查询
 脚本作者：
-@IBL3ND     @Nullwhy
+部分代码参考@iBL3ND    @Nullwhy
 使用说明:
 1. 添加到Egern脚本
-2. 右上角添加小组件
-3. 分别添加环境变量 NAME 值为机场名称、URL 值为订阅链接、RESET 值为重置日期
-4. 适配中号显示
+2. 主界面右上角添加小组件
+3. 分别添加环境变量 NAME 值为机场名称、URL 值为订阅链接、RESET 值为重置日期；大号组件支持多机场显示，分别添加 NAME1、URL1、RESET1、NAME2、URL2、RESET2、NAME3、URL3、RESET3
+4. 适配中小、中、大号组件，大号件支持最多3个机场同时显示；小号和中号单机场环境变量可写为 NAME、URL、RESET
+5. 组件右侧热力图彩色为已用流量，灰色为未用流量；缓存为30分钟，刷新时间为组件刷新时间
 **********************************/
 export default async function (ctx) {
   const url = (ctx.env.URL || ctx.env.URL1 || '').trim();
@@ -30,6 +31,14 @@ export default async function (ctx) {
     red: { light: '#FF6B6B', dark: '#FF8787' },
     ringBg: { light: '#D7D7DE', dark: '#2C2C2E' }
   };
+
+  if (ctx.widgetFamily === 'systemLarge') {
+    const largeSlots = collectLargeSlots(ctx.env);
+    if (largeSlots.length > 1) {
+      const infos = await Promise.all(largeSlots.map(slot => fetchInfo(ctx, slot)));
+      return buildLargeMultiWidget(C, infos);
+    }
+  }
 
   if (!url) return emptyWidget(C);
 
@@ -57,6 +66,63 @@ export default async function (ctx) {
   const now = new Date();
   const refreshText = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
+  if (ctx.widgetFamily === 'systemSmall') {
+    return {
+      type: 'widget',
+      backgroundColor: C.bg,
+      padding: [12, 12],
+      children: [
+        {
+          type: 'stack',
+          direction: 'column',
+          gap: 10,
+          alignItems: 'center',
+          children: [
+            {
+              type: 'stack',
+              direction: 'row',
+              alignItems: 'center',
+              children: [
+                {
+                  type: 'stack',
+                  direction: 'row',
+                  alignItems: 'center',
+                  gap: 6,
+                  children: [
+                    { type: 'stack', width: 13, height: 13, borderRadius: 3, backgroundColor: C.green, children: [] },
+                    { type: 'text', text: name.toUpperCase(), font: { size: 11, weight: 'bold' }, textColor: C.sub, maxLines: 1 }
+                  ]
+                },
+                { type: 'spacer' },
+                {
+                  type: 'stack',
+                  direction: 'row',
+                  alignItems: 'center',
+                  gap: 5,
+                  padding: [4, 8],
+                  backgroundColor: { light: '#F7F7F9', dark: '#2C2C2E' },
+                  borderRadius: 8,
+                  children: [
+                    { type: 'stack', width: 7, height: 7, borderRadius: 3.5, backgroundColor: statusColor, children: [] },
+                    { type: 'text', text: statusTextZh(percent), font: { size: 11, weight: 'bold', design: 'rounded' }, textColor: statusColor, maxLines: 1 }
+                  ]
+                }
+              ]
+            },
+            {
+              type: 'stack',
+              alignItems: 'center',
+              padding: [10, 10],
+              backgroundColor: C.card,
+              borderRadius: 16,
+              children: [buildUsageGrid(C, percent, statusColor, 12, 4)]
+            }
+          ]
+        }
+      ]
+    };
+  }
+
   return {
     type: 'widget',
     backgroundColor: C.bg,
@@ -78,7 +144,7 @@ export default async function (ctx) {
                 alignItems: 'center',
                 gap: 6,
                 children: [
-                  { type: 'stack', width: 13, height: 13, borderRadius: 3, backgroundColor: statusColor, children: [] },
+                  { type: 'stack', width: 13, height: 13, borderRadius: 3, backgroundColor: C.green, children: [] },
                   { type: 'text', text: name.toUpperCase(), font: { size: 11, weight: 'bold' }, textColor: C.sub, maxLines: 1 }
                 ]
               },
@@ -88,9 +154,12 @@ export default async function (ctx) {
                 direction: 'row',
                 alignItems: 'center',
                 gap: 5,
+                padding: [4, 8],
+                backgroundColor: { light: '#F7F7F9', dark: '#2C2C2E' },
+                borderRadius: 8,
                 children: [
-                  { type: 'stack', width: 9, height: 9, borderRadius: 4.5, backgroundColor: statusColor, children: [] },
-                  { type: 'text', text: statusTextZh(percent), font: { size: 11, weight: 'bold', design: 'rounded' }, textColor: C.sub, maxLines: 1 }
+                  { type: 'stack', width: 7, height: 7, borderRadius: 3.5, backgroundColor: statusColor, children: [] },
+                  { type: 'text', text: statusTextZh(percent), font: { size: 11, weight: 'bold', design: 'rounded' }, textColor: statusColor, maxLines: 1 }
                 ]
               }
             ]
@@ -145,7 +214,133 @@ export default async function (ctx) {
   };
 }
 
-const CACHE_TIME = 60 * 60 * 1000;
+
+function collectLargeSlots(env) {
+  const slots = [];
+  for (let index = 1; index <= 3; index++) {
+    const url = (env[`URL${index}`] || '').trim();
+    if (!url) continue;
+    const rawReset = (env[`RESET${index}`] || '').trim();
+    slots.push({
+      url,
+      name: (env[`NAME${index}`] || '').trim() || `SUBSCRIPTION ${index}`,
+      resetDay: /^\d+$/.test(rawReset) ? Number(rawReset) : null
+    });
+  }
+  return slots;
+}
+
+function buildLargeMultiWidget(C, infos) {
+  return {
+    type: 'widget',
+    backgroundColor: C.bg,
+    padding: [10, 12],
+    children: [
+      {
+        type: 'stack',
+        direction: 'column',
+        gap: 6,
+        justifyContent: 'center',
+        children: infos.slice(0, 3).map(info => buildLargeAirportCard(C, info))
+      }
+    ]
+  };
+}
+
+function buildLargeAirportCard(C, info) {
+  if (info.error) {
+    return {
+      type: 'stack',
+      direction: 'column',
+      height: 112,
+      padding: [10, 12],
+      backgroundColor: C.card,
+      borderRadius: 18,
+      children: [{ type: 'text', text: `${info.name} 获取失败`, font: { size: 13, weight: 'bold' }, textColor: C.red, maxLines: 1 }]
+    };
+  }
+
+  const used = info.used || 0;
+  const total = info.totalBytes || 0;
+  const remain = Math.max(total - used, 0);
+  const percent = total > 0 ? Math.min(Math.max((used / total) * 100, 0), 100) : 0;
+  const remainPercent = 100 - percent;
+  let statusColor = C.green;
+  if (remainPercent <= 5) statusColor = C.red;
+  else if (remainPercent <= 20) statusColor = C.orange;
+  const expireText = getExpireText(info.expire, info.remainDays);
+
+  return {
+    type: 'stack',
+    direction: 'column',
+    height: 104,
+    padding: [7, 12],
+    backgroundColor: C.card,
+    borderRadius: 18,
+    children: [
+      {
+        type: 'stack',
+        direction: 'row',
+        alignItems: 'center',
+        children: [
+          {
+            type: 'stack',
+            direction: 'row',
+            alignItems: 'center',
+            gap: 7,
+            children: [
+              { type: 'stack', width: 13, height: 13, borderRadius: 3, backgroundColor: C.green, children: [] },
+              { type: 'text', text: info.name.toUpperCase(), font: { size: 11, weight: 'bold' }, textColor: C.sub, maxLines: 1 }
+            ]
+          },
+          { type: 'spacer' },
+          {
+            type: 'stack',
+            direction: 'row',
+            alignItems: 'center',
+            gap: 5,
+            padding: [4, 8],
+            backgroundColor: { light: '#F7F7F9', dark: '#2C2C2E' },
+            borderRadius: 8,
+            children: [
+              { type: 'stack', width: 7, height: 7, borderRadius: 3.5, backgroundColor: statusColor, children: [] },
+              { type: 'text', text: statusTextZh(percent), font: { size: 11, weight: 'bold', design: 'rounded' }, textColor: statusColor, maxLines: 1 }
+            ]
+          }
+        ]
+      },
+      {
+        type: 'stack',
+        direction: 'row',
+        alignItems: 'center',
+        gap: 10,
+        children: [
+          {
+            type: 'text',
+            text: [
+              `套餐总量：${formatBytes(total)}`,
+              `剩余总量：${formatBytes(remain)}`,
+              `到期时间：${formatExpireValue(expireText)}`,
+              `到期天数：${info.remainDays != null ? `${info.remainDays} 天` : '-'}`
+            ].join('\n'),
+            font: { size: 10, weight: 'bold', design: 'rounded' },
+            textColor: C.text,
+            maxLines: 4,
+            flex: 1
+          },
+          {
+            type: 'stack',
+            direction: 'column',
+            alignItems: 'center',
+            children: [buildUsageGrid(C, percent, statusColor, 9, 4)]
+          }
+        ]
+      }
+    ]
+  };
+}
+
+const CACHE_TIME = 30 * 60 * 1000;
 const UA_LIST = [
   { 'User-Agent': 'Quantumult%20X/1.5.2' },
   { 'User-Agent': 'clash-verge-rev/2.3.1', Accept: 'application/x-yaml,text/plain,*/*' },
@@ -219,7 +414,7 @@ function usageCellColor(index, active, C) {
   return { light: '#FF6B6B', dark: '#FF8787' };
 }
 
-function buildUsageGrid(C, percent, activeColor) {
+function buildUsageGrid(C, percent, activeColor, cellSize = 14, cellGap = 5) {
   const total = 35;
   const active = Math.max(0, Math.min(total, Math.round((percent / 100) * total)));
   const rows = [];
@@ -229,9 +424,9 @@ function buildUsageGrid(C, percent, activeColor) {
       const index = row * 7 + col;
       cells.push({
         type: 'stack',
-        width: 14,
-        height: 14,
-        borderRadius: 4,
+        width: cellSize,
+        height: cellSize,
+        borderRadius: Math.max(3, Math.round(cellSize / 3)),
         backgroundColor: index < active ? usageCellColor(index, active, C) : C.ringBg,
         children: []
       });
@@ -239,7 +434,7 @@ function buildUsageGrid(C, percent, activeColor) {
     rows.push({
       type: 'stack',
       direction: 'row',
-      gap: 5,
+      gap: cellGap,
       children: cells
     });
   }
@@ -317,4 +512,3 @@ function getRemainingDays(resetDay) {
   }
   return Math.max(0, Math.ceil((next - now) / 86400000));
 }
-
