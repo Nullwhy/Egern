@@ -5,7 +5,7 @@ Version : v1.0.1
 平台: Egern
 功能: NodeSeek 每日签到
 脚本作者：
-@Curtinp118      Nullwhy适配Egern
+@Curtinp118      @Nullwhy 适配Egern
 使用说明:
 1. 添加 HTTP 请求脚本抓取请求头
 2. 添加定时任务自动签到
