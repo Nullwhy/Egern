@@ -23,8 +23,8 @@
  * [sn=]    设置国家与序号之间的分隔符，默认为空格；
  * 序号参数
  * [one]    清理只有一个节点的地区的01
- * [sup]    按连续地区分组添加上标批次，例如 香港¹ 01、香港¹ 02、香港² 01
- * [sup=2]  手动指定上标批次，适合多个机场分别运行脚本，例如第二个机场用 sup=2 输出 香港² 01
+ * [sup1]   第一个机场添加上标批次，例如 香港¹ 01、香港¹ 02
+ * [sup2]   第二个机场添加上标批次，例如 香港² 01、香港² 02；第三个机场用 sup3，以此类推
  * [flag]   给节点前面加国旗
  *
  *** 前缀参数
@@ -53,7 +53,7 @@ const nx = inArg.nx || false,
   blpx = inArg.blpx || false,
   blnx = inArg.blnx || false,
   numone = inArg.one || false,
-  sup = inArg.sup || false,
+  sup = Object.keys(inArg).find((k) => /^sup\d+$/.test(k)) || false,
   debug = inArg.debug || false,
   clear = inArg.clear || false,
   addflag = inArg.flag || false,
@@ -75,7 +75,7 @@ const FGF = inArg.fgf == undefined ? " " : decodeURI(inArg.fgf),
   },
   inname = nameMap[inArg.in] || "",
   outputName = nameMap[inArg.out] || "",
-  SUPNUM = sup === true ? 0 : parseInt(decodeURI(sup), 10) || 0;
+  SUPNUM = sup ? parseInt(sup.replace("sup", ""), 10) || 0 : 0;
 // prettier-ignore
 const FG = ['🇭🇰','🇲🇴','🇹🇼','🇯🇵','🇰🇷','🇸🇬','🇺🇸','🇬🇧','🇫🇷','🇩🇪','🇦🇺','🇦🇪','🇦🇫','🇦🇱','🇩🇿','🇦🇴','🇦🇷','🇦🇲','🇦🇹','🇦🇿','🇧🇭','🇧🇩','🇧🇾','🇧🇪','🇧🇿','🇧🇯','🇧🇹','🇧🇴','🇧🇦','🇧🇼','🇧🇷','🇻🇬','🇧🇳','🇧🇬','🇧🇫','🇧🇮','🇰🇭','🇨🇲','🇨🇦','🇨🇻','🇰🇾','🇨🇫','🇹🇩','🇨🇱','🇨🇴','🇰🇲','🇨🇬','🇨🇩','🇨🇷','🇭🇷','🇨🇾','🇨🇿','🇩🇰','🇩🇯','🇩🇴','🇪🇨','🇪🇬','🇸🇻','🇬🇶','🇪🇷','🇪🇪','🇪🇹','🇫🇯','🇫🇮','🇬🇦','🇬🇲','🇬🇪','🇬🇭','🇬🇷','🇬🇱','🇬🇹','🇬🇳','🇬🇾','🇭🇹','🇭🇳','🇭🇺','🇮🇸','🇮🇳','🇮🇩','🇮🇷','🇮🇶','🇮🇪','🇮🇲','🇮🇱','🇮🇹','🇨🇮','🇯🇲','🇯🇴','🇰🇿','🇰🇪','🇰🇼','🇰🇬','🇱🇦','🇱🇻','🇱🇧','🇱🇸','🇱🇷','🇱🇾','🇱🇹','🇱🇺','🇲🇰','🇲🇬','🇲🇼','🇲🇾','🇲🇻','🇲🇱','🇲🇹','🇲🇷','🇲🇺','🇲🇽','🇲🇩','🇲🇨','🇲🇳','🇲🇪','🇲🇦','🇲🇿','🇲🇲','🇳🇦','🇳🇵','🇳🇱','🇳🇿','🇳🇮','🇳🇪','🇳🇬','🇰🇵','🇳🇴','🇴🇲','🇵🇰','🇵🇦','🇵🇾','🇵🇪','🇵🇭','🇵🇹','🇵🇷','🇶🇦','🇷🇴','🇷🇺','🇷🇼','🇸🇲','🇸🇦','🇸🇳','🇷🇸','🇸🇱','🇸🇰','🇸🇮','🇸🇴','🇿🇦','🇪🇸','🇱🇰','🇸🇩','🇸🇷','🇸🇿','🇸🇪','🇨🇭','🇸🇾','🇹🇯','🇹🇿','🇹🇭','🇹🇬','🇹🇴','🇹🇹','🇹🇳','🇹🇷','🇹🇲','🇻🇮','🇺🇬','🇺🇦','🇺🇾','🇺🇿','🇻🇪','🇻🇳','🇾🇪','🇿🇲','🇿🇼','🇦🇩','🇷🇪','🇵🇱','🇬🇺','🇻🇦','🇱🇮','🇨🇼','🇸🇨','🇦🇶','🇬🇮','🇨🇺','🇫🇴','🇦🇽','🇧🇲','🇹🇱']
 // prettier-ignore
@@ -308,7 +308,7 @@ function jxh(e) { const n = e.reduce((e, n) => { const t = e.find((e) => e.name 
 // prettier-ignore
 function toSupNum(n) { const m = { "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴", "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹" }; return String(n).split("").map((i) => m[i] || i).join(""); }
 // prettier-ignore
-function sxh(e) { const batch = {}, count = {}; let last = ""; e.forEach((n) => { if (SUPNUM) { batch[n.name] = SUPNUM; count[n.name] = (count[n.name] || 0) + 1; } else { if (n.name !== last) { batch[n.name] = (batch[n.name] || 0) + 1; count[n.name + "|" + batch[n.name]] = 0; last = n.name; } const key = n.name + "|" + batch[n.name]; count[key]++; } const ckey = SUPNUM ? n.name : n.name + "|" + batch[n.name]; const tail = n._supTail ? FGF + n._supTail : ""; n.name = `${n.name}${toSupNum(batch[n.name])}${tail}${XHFGF}${count[ckey].toString().padStart(2, "0")}`; delete n._supTail; }); return e; }
+function sxh(e) { const count = {}; e.forEach((n) => { count[n.name] = (count[n.name] || 0) + 1; const tail = n._supTail ? FGF + n._supTail : ""; n.name = `${n.name}${toSupNum(SUPNUM)}${tail}${XHFGF}${count[n.name].toString().padStart(2, "0")}`; delete n._supTail; }); return e; }
 // prettier-ignore
 function oneP(e) { const t = e.reduce((e, t) => { const n = t.name.replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹]+[^A-Za-z0-9\u00C0-\u017F\u4E00-\u9FFF]*\d+$/, "").replace(/[^A-Za-z0-9\u00C0-\u017F\u4E00-\u9FFF]+\d+$/, ""); if (!e[n]) { e[n] = []; } e[n].push(t); return e; }, {}); for (const e in t) { if (t[e].length === 1 && t[e][0].name.endsWith("01")) {/* const n = t[e][0]; n.name = e;*/ t[e][0].name= t[e][0].name.replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹]+[^A-Za-z0-9\u00C0-\u017F\u4E00-\u9FFF]*01$/, "").replace(/[^.]01/, "") } } return e; }
 // prettier-ignore
