@@ -1,8 +1,8 @@
 /**
- * 更新日期：2026-07-13   
- * 作者：Keywos    Nullwhy 添加新参数
+ * 更新日期：2024-04-05 15:30:15
  * 用法：Sub-Store 脚本操作添加
- * subname.js 以下是此脚本支持的参数，必须以 # 为开头多个参数使用"&"连接，参考上述地址为例使用参数。 禁用缓存url#noCache
+ * rename.js 以下是此脚本支持的参数，必须以 # 为开头多个参数使用"&"连接，参考上述地址为例使用参数。 禁用缓存url#noCache
+ *
  *** 主要参数
  * [in=] 自动判断机场节点名类型 优先级 zh(中文) -> flag(国旗) -> quan(英文全称) -> en(英文简写)
  * 如果不准的情况, 可以加参数指定:
@@ -276,10 +276,11 @@ function operator(pro) {
           usflag = usflag === "🇹🇼" ? "🇨🇳" : usflag;
         }
       }
-      keyover = keyover
-        .concat(firstName, usflag, nNames, findKeyValue, retainKey, ikey, ikeys)
-        .filter((k) => k !== "");
-      e.name = keyover.join(FGF);
+      const supHead = [firstName, usflag, nNames, findKeyValue].filter((k) => k !== "");
+      const supTail = [retainKey, ikey, ikeys].filter((k) => k !== "");
+      keyover = keyover.concat(supHead, supTail).filter((k) => k !== "");
+      e.name = sup ? supHead.join(FGF) : keyover.join(FGF);
+      if (sup) e._supTail = supTail.join(FGF);
     } else {
       if (nm) {
         e.name = FNAME + FGF + e.name;
@@ -303,7 +304,7 @@ function jxh(e) { const n = e.reduce((e, n) => { const t = e.find((e) => e.name 
 // prettier-ignore
 function toSupNum(n) { const m = { "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴", "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹" }; return String(n).split("").map((i) => m[i] || i).join(""); }
 // prettier-ignore
-function sxh(e) { const batch = {}, count = {}; let last = ""; e.forEach((n) => { if (n.name !== last) { batch[n.name] = (batch[n.name] || 0) + 1; count[n.name + "|" + batch[n.name]] = 0; last = n.name; } const key = n.name + "|" + batch[n.name]; count[key]++; n.name = `${n.name}${toSupNum(batch[n.name])}${XHFGF}${count[key].toString().padStart(2, "0")}`; }); return e; }
+function sxh(e) { const batch = {}, count = {}; let last = ""; e.forEach((n) => { if (n.name !== last) { batch[n.name] = (batch[n.name] || 0) + 1; count[n.name + "|" + batch[n.name]] = 0; last = n.name; } const key = n.name + "|" + batch[n.name]; count[key]++; const tail = n._supTail ? FGF + n._supTail : ""; n.name = `${n.name}${toSupNum(batch[n.name])}${tail}${XHFGF}${count[key].toString().padStart(2, "0")}`; delete n._supTail; }); return e; }
 // prettier-ignore
 function oneP(e) { const t = e.reduce((e, t) => { const n = t.name.replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹]+[^A-Za-z0-9\u00C0-\u017F\u4E00-\u9FFF]*\d+$/, "").replace(/[^A-Za-z0-9\u00C0-\u017F\u4E00-\u9FFF]+\d+$/, ""); if (!e[n]) { e[n] = []; } e[n].push(t); return e; }, {}); for (const e in t) { if (t[e].length === 1 && t[e][0].name.endsWith("01")) {/* const n = t[e][0]; n.name = e;*/ t[e][0].name= t[e][0].name.replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹]+[^A-Za-z0-9\u00C0-\u017F\u4E00-\u9FFF]*01$/, "").replace(/[^.]01/, "") } } return e; }
 // prettier-ignore
