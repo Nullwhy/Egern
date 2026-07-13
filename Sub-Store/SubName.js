@@ -283,8 +283,8 @@ function operator(pro) {
       const supHead = [firstName, usflag, nNames, findKeyValue].filter((k) => k !== "");
       const supTail = [retainKey, ikey, ikeys].filter((k) => k !== "");
       keyover = keyover.concat(supHead, supTail).filter((k) => k !== "");
-      e.name = sup ? supHead.join(FGF) : keyover.join(FGF);
-      if (sup) e._supTail = supTail.join(FGF);
+      e.name = supHead.join(FGF);
+      e._supTail = supTail.join(FGF);
     } else {
       if (nm) {
         e.name = FNAME + FGF + e.name;
@@ -304,11 +304,11 @@ function operator(pro) {
 // prettier-ignore
 function getList(arg) { switch (arg) { case 'us': return EN; case 'gq': return FG; case 'quan': return QC; default: return ZH; }}
 // prettier-ignore
-function jxh(e) { const n = e.reduce((e, n) => { const t = e.find((e) => e.name === n.name); if (t) { t.count++; t.items.push({ ...n, name: `${n.name}${XHFGF}${t.count.toString().padStart(2, "0")}`, }); } else { e.push({ name: n.name, count: 1, items: [{ ...n, name: `${n.name}${XHFGF}01` }], }); } return e; }, []);const t=(typeof Array.prototype.flatMap==='function'?n.flatMap((e) => e.items):n.reduce((acc, e) => acc.concat(e.items),[])); e.splice(0, e.length, ...t); return e;}
+function jxh(e) { const n = e.reduce((e, n) => { const t = e.find((e) => e.name === n.name); const tail = n._supTail ? FGF + n._supTail : ""; if (t) { t.count++; t.items.push({ ...n, name: `${n.name}${XHFGF}${t.count.toString().padStart(2, "0")}${tail}`, }); } else { e.push({ name: n.name, count: 1, items: [{ ...n, name: `${n.name}${XHFGF}01${tail}` }], }); } delete n._supTail; return e; }, []);const t=(typeof Array.prototype.flatMap==='function'?n.flatMap((e) => e.items):n.reduce((acc, e) => acc.concat(e.items),[])); e.splice(0, e.length, ...t); return e;}
 // prettier-ignore
 function toSupNum(n) { const m = { "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴", "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹" }; return String(n).split("").map((i) => m[i] || i).join(""); }
 // prettier-ignore
-function sxh(e) { const count = {}; e.forEach((n) => { count[n.name] = (count[n.name] || 0) + 1; const tail = n._supTail ? FGF + n._supTail : ""; n.name = `${n.name}${toSupNum(SUPNUM)}${tail}${XHFGF}${count[n.name].toString().padStart(2, "0")}`; delete n._supTail; }); return e; }
+function sxh(e) { const count = {}; e.forEach((n) => { count[n.name] = (count[n.name] || 0) + 1; const tail = n._supTail ? FGF + n._supTail : ""; n.name = `${n.name}${toSupNum(SUPNUM)}${XHFGF}${count[n.name].toString().padStart(2, "0")}${tail}`; delete n._supTail; }); return e; }
 // prettier-ignore
 function oneP(e) { const t = e.reduce((e, t) => { const n = t.name.replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹]+[^A-Za-z0-9\u00C0-\u017F\u4E00-\u9FFF]*\d+$/, "").replace(/[^A-Za-z0-9\u00C0-\u017F\u4E00-\u9FFF]+\d+$/, ""); if (!e[n]) { e[n] = []; } e[n].push(t); return e; }, {}); for (const e in t) { if (t[e].length === 1 && t[e][0].name.endsWith("01")) {/* const n = t[e][0]; n.name = e;*/ t[e][0].name= t[e][0].name.replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹]+[^A-Za-z0-9\u00C0-\u017F\u4E00-\u9FFF]*01$/, "").replace(/[^.]01/, "") } } return e; }
 // prettier-ignore
