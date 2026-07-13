@@ -1,6 +1,7 @@
 /**
  * 更新日期：2026-07-13
- * 作者：Keywos   Nullwhy添加新参数
+ * 原作者：Keywos
+ * 修改：Nullwhy 添加 sup 上标批次参数
  * 用法：Sub-Store 脚本操作添加
  * SubName.js 以下是此脚本支持的参数，必须以 # 为开头多个参数使用"&"连接，参考上述地址为例使用参数。 禁用缓存url#noCache
  *
