@@ -1,7 +1,8 @@
 /**
- * 更新日期：2024-04-05 15:30:15
+ * 更新日期：2026-07-13
+ * 作者：Keywos   Nullwhy添加新参数
  * 用法：Sub-Store 脚本操作添加
- * rename.js 以下是此脚本支持的参数，必须以 # 为开头多个参数使用"&"连接，参考上述地址为例使用参数。 禁用缓存url#noCache
+ * SubName.js 以下是此脚本支持的参数，必须以 # 为开头多个参数使用"&"连接，参考上述地址为例使用参数。 禁用缓存url#noCache
  *
  *** 主要参数
  * [in=] 自动判断机场节点名类型 优先级 zh(中文) -> flag(国旗) -> quan(英文全称) -> en(英文简写)
@@ -30,7 +31,7 @@
  *** 保留参数
  * [blkey=iplc+gpt+NF+IPLC] 用+号添加多个关键词 保留节点名的自定义字段 需要区分大小写!
  * 如果需要修改 保留的关键词 替换成别的 可以用 > 分割 例如 [#blkey=GPT>新名字+其他关键词] 这将把【GPT】替换成【新名字】
- * 例如      https://raw.githubusercontent.com/Keywos/rule/main/rename.js#flag&blkey=GPT>新名字+NF
+ * 例如      https://raw.githubusercontent.com/Nullwhy/Egern/main/Sub-Store/SubName.js#flag&blkey=GPT>新名字+NF
  * [blgd]   保留: 家宽 IPLC ˣ² 等
  * [bl]     正则匹配保留 [0.1x, x0.2, 6x ,3倍]等标识
  * [nx]     保留1倍率与不显示倍率的
