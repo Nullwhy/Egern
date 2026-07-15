@@ -207,9 +207,9 @@ export default async function (ctx) {
     const memUsed = Math.max(0, memTotal - memAvailable);
     const memPct = Math.min(100, Math.round((memUsed / memTotal) * 100));
 
-    const df = (p[5] || '').split(/\s+/);
-    const diskTotal = Number(df[1]) || 1, diskUsed = Number(df[2]) || 0;
-    const diskPct = parseInt(df[4]) || 0;
+    const disk = (p[5] || '').split(/\s+/);
+    const diskTotal = Number(disk[0]) || 1, diskUsed = Number(disk[1]) || 0;
+    const diskPct = parseInt(disk[2]) || 0;
     const cores = parseInt(p[6]) || 1;
 
     const ipInfo = maskIP(host);
