@@ -146,8 +146,10 @@ export default async function (ctx) {
       'hostname 2>/dev/null || cat /proc/sys/kernel/hostname',
       'cat /proc/loadavg',
       'cat /proc/uptime',
-      'head -1 /proc/stat',
-      "awk '/MemTotal/{t=$2}/MemAvailable/{a=$2}END{print t,a}' /proc/meminfo",
+      // 与 LuCI 一致，使用 1 秒 CPU 采样，避免将两次小组件刷新间的平均值当作瞬时使用率。
+      'head -1 /proc/stat; sleep 1; head -1 /proc/stat',
+      // LuCI 的“已使用”包含页面缓存：MemTotal - MemFree。
+      "awk '/MemTotal/{t=$2}/MemFree/{f=$2}END{print t,f}' /proc/meminfo",
       // BusyBox df 不支持 GNU 的 -B1，统一转换其 1K-block 输出为字节。
       "df -k 2>/dev/null | awk '$6==\"/overlay\"{print $2*1024, $3*1024, $5; found=1; exit} END{if(!found) exit 1}' || df -k / | awk 'NR==2{print $2*1024, $3*1024, $5}'",
       'grep -c ^processor /proc/cpuinfo 2>/dev/null || echo 1',
@@ -169,21 +171,23 @@ export default async function (ctx) {
     const upMins = Math.floor((upSec % 3600) / 60);
     const uptime = upDays > 0 ? `${upDays}天 ${upHours}小时` : `${upHours}小时 ${upMins}分`;
 
-    const cpuNums = (p[3] || '').replace(/^cpu\s+/, '').split(/\s+/).map(Number);
-    const cpuTotal = cpuNums.reduce((a, b) => a + b, 0);
-    const cpuIdle = cpuNums[3] || 0;
-    const prevCpu = ctx.storage.getJSON('_cpu');
-    let cpuPct = 0;
-    if (prevCpu && cpuTotal > prevCpu.t) {
-      cpuPct = Math.round(((cpuTotal - prevCpu.t - (cpuIdle - prevCpu.i)) / (cpuTotal - prevCpu.t)) * 100);
-    }
-    ctx.storage.setJSON('_cpu', { t: cpuTotal, i: cpuIdle });
-    cpuPct = Math.max(0, Math.min(100, cpuPct));
-    
+    const cpuLines = (p[3] || '').split(/\n/).filter(Boolean);
+    const cpuSnapshot = (line) => line.replace(/^cpu\s+/, '').trim().split(/\s+/).map(Number);
+    const cpuStart = cpuSnapshot(cpuLines[0] || '');
+    const cpuEnd = cpuSnapshot(cpuLines[1] || cpuLines[0] || '');
+    const cpuStartTotal = cpuStart.reduce((a, b) => a + b, 0);
+    const cpuEndTotal = cpuEnd.reduce((a, b) => a + b, 0);
+    const cpuStartIdle = (cpuStart[3] || 0) + (cpuStart[4] || 0);
+    const cpuEndIdle = (cpuEnd[3] || 0) + (cpuEnd[4] || 0);
+    const cpuDelta = cpuEndTotal - cpuStartTotal;
+    const cpuPct = cpuDelta > 0
+      ? Math.max(0, Math.min(100, Math.round(((cpuDelta - (cpuEndIdle - cpuStartIdle)) / cpuDelta) * 100)))
+      : 0;
+
     const memKB = (p[4] || '0 0').split(' ').map(Number);
     const memTotal = memKB[0] * 1024 || 1;
-    const memAvailable = memKB[1] * 1024 || 0;
-    const memUsed = Math.max(0, memTotal - memAvailable);
+    const memFree = memKB[1] * 1024 || 0;
+    const memUsed = Math.max(0, memTotal - memFree);
     const memPct = Math.min(100, Math.round((memUsed / memTotal) * 100));
 
     const disk = (p[5] || '').split(/\s+/);
