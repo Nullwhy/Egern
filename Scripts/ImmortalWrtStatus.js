@@ -28,13 +28,7 @@
  *                      IPv4 显示为: 123.45.*.*
  *                      IPv6 显示为: 2001:db8:****:****
  * 
- * 【流量统计 - 通用配置】
- *   TRAFFIC_LIMIT      月流量限额（单位 GB），默认 2000
- *                      用于计算流量使用百分比
- *   RESET_DAY          流量重置日期（每月几号），默认 1
- *                      用于显示下次重置时间
- * 
- * 【ImmortalWrt WAN 流量】
+ *  * 【ImmortalWrt WAN 流量】
  *   WAN_INTERFACE      WAN 网口名（可选），如 pppoe-wan、wan、eth1
  *                      留空时自动识别默认路由网口；多拨/策略路由建议显式填写
  *   流量仅统计 WAN，避免 LAN 内部转发被重复计入；未安装 vnstat 时为开机累计值
@@ -49,9 +43,7 @@
  *   SERVER_PORT=22
  *   SERVER_USER=root
  *   SERVER_KEY="-----BEGIN RSA PRIVATE KEY-----\nMIIE...\n-----END RSA PRIVATE KEY-----"
- *   WIDGET_NAME=我的节点
- *   TRAFFIC_LIMIT=2500
- *   RESET_DAY=12
+ *   WIDGET_NAME=我的路由器
  * 
  * 【密钥认证 - 压缩格式】
  *   SERVER_KEY="MIIEpAIBAAKCAQ..."（纯 Base64，会自动补全格式）
@@ -76,9 +68,6 @@ export default async function (ctx) {
     password: env.SERVER_PASSWORD || '',
     privateKey: env.SERVER_KEY || '', 
     maskIp: env.MASK_IP !== undefined ? String(env.MASK_IP) === 'true' : true,
-    
-    trafficLimitGB: Number(env.TRAFFIC_LIMIT) || 2000,
-    resetDay: Number(env.RESET_DAY) || 1,
     // 留空时自动识别默认路由对应的 WAN 网口；PPPoE 常见为 pppoe-wan
     wanInterface: /^[A-Za-z0-9_.:-]+$/.test(env.WAN_INTERFACE || '') ? env.WAN_INTERFACE : ''
   };
@@ -108,11 +97,6 @@ export default async function (ctx) {
     return ip;
   };
 
-  const getTrafficColor = (pct) => {
-    if (pct >= 85) return { light: '#FF3B30', dark: '#FF453A' }; 
-    if (pct >= 60) return { light: '#FF9500', dark: '#FF9F0A' }; 
-    return { light: '#34C759', dark: '#30D158' };                
-  };
 
   const fmtBytes = (b) => {
     if (b >= 1024 ** 4) return (b / 1024 ** 4).toFixed(2) + 'T';
@@ -122,17 +106,10 @@ export default async function (ctx) {
     return Math.round(b) + 'B';
   };
 
-  const getNextResetDate = (resetDay) => {
-    const now = new Date();
-    let y = now.getFullYear(), m = now.getMonth();
-    if (now.getDate() >= resetDay) m += 1; 
-    if (m > 11) { m = 0; y += 1; }
-    return `${m + 1}月${resetDay}日 00:00`;
-  };
 
   let d;
   try {
-    const { host, port, username, password, privateKey, widgetName, trafficLimitGB, resetDay, wanInterface } = SERVER_CONFIG;
+    const { host, port, username, password, privateKey, widgetName, wanInterface } = SERVER_CONFIG;
     if (!host) throw new Error('未配置 SERVER_HOST 环境变量');
 
     let finalKey = privateKey;
@@ -177,6 +154,8 @@ export default async function (ctx) {
       `wanIf=$(${wanIfExpr}); awk -F: -v iface=\"$wanIf\" '{name=$1; gsub(/[[:space:]]/, \"\", name); if(name==iface) {data=$2; gsub(/^[[:space:]]+/, \"\", data); split(data, values, /[[:space:]]+/); print values[1], values[9]; found=1}} END{if(!found) print \"0 0\"}' /proc/net/dev`,
       'vnstat --json -m 1 2>/dev/null || echo ""',
       wanIfExpr,
+      "for h in /sys/class/hwmon/hwmon*; do [ -r \"$h/name\" ] || continue; for t in \"$h\"/temp*_input; do [ -r \"$t\" ] || continue; name=$(cat \"$h/name\" 2>/dev/null); value=$(cat \"$t\"); awk -v n=\"$name\" '{printf \"%s %.0f\\n\", n, $1 / ($1 > 1000 ? 1000 : 1)}' \"$t\"; exit; done; done; echo ''",
+
     ];
     const { stdout } = await session.exec(cmds.join(` && echo '${SEP}' && `));
     await session.close();
@@ -217,10 +196,14 @@ export default async function (ctx) {
     const nn = (p[7] || '0 0').split(' ');
     const netRx = Number(nn[0]) || 0, netTx = Number(nn[1]) || 0;
     const detectedWan = p[9] || wanInterface || 'WAN';
+    const tempParts = (p[10] || '').trim().split(/\s+/);
+    const temperature = Number(tempParts[tempParts.length - 1]);
+    const tempLabel = tempParts.length > 1 ? 'WiFi' : '';
+    const tempText = Number.isFinite(temperature) ? `${tempLabel} ${temperature}°C` : '';
     ctx.storage.setJSON('_net', { rx: netRx, tx: netTx, ts: Date.now() });
 
     // 流量统计：优先 vnstat（按月），回退到 /proc/net/dev（开机累计）
-    let tfRx = 0, tfTx = 0, tfUsed = 0, tfTotal = 1, tfPct = 0, tfReset = '';
+    let tfRx = 0, tfTx = 0;
     let tfSource = '累计';
 
     if (p[8]) {
@@ -241,10 +224,6 @@ export default async function (ctx) {
       tfTx = netTx;
     }
 
-    tfUsed = tfRx + tfTx;
-    tfTotal = trafficLimitGB * (1024 ** 3);
-    tfPct = Math.min((tfUsed / tfTotal) * 100, 100) || 0;
-    tfReset = getNextResetDate(resetDay);
 
     const dNow = new Date();
     const timeStr = `${String(dNow.getHours()).padStart(2, '0')}:${String(dNow.getMinutes()).padStart(2, '0')}:${String(dNow.getSeconds()).padStart(2, '0')}`;
@@ -253,7 +232,7 @@ export default async function (ctx) {
       hostname, uptime, load, cpuPct, cores,
       memTotal, memUsed, memPct, diskTotal, diskUsed, diskPct,
       netRx, netTx,
-      tfRx, tfTx, tfUsed, tfTotal, tfPct, tfReset, timeStr, ipInfo, tfSource, detectedWan
+      tfRx, tfTx, timeStr, ipInfo, tfSource, detectedWan, tempText
     };
   } catch (e) {
     d = { error: String(e.message || e) };
@@ -279,6 +258,10 @@ export default async function (ctx) {
       { type: 'image', src: 'sf-symbol:server.rack', color: C.text, width: 14, height: 14 },
       { type: 'text', text: d.hostname, font: { size: 'headline', weight: 'bold' }, textColor: C.text, maxLines: 1, minScale: 0.6 },
       { type: 'spacer' },
+      ...(d.tempText ? [
+        { type: 'image', src: 'sf-symbol:thermometer.medium', color: C.netRx, width: 10, height: 10 },
+        { type: 'text', text: d.tempText, font: { size: 10, weight: 'medium' }, textColor: C.dim, maxLines: 1, minScale: 0.8 },
+      ] : []),
       { type: 'text', text: d.uptime, font: { size: 10, weight: 'medium' }, textColor: C.dim, maxLines: 1, minScale: 0.8 },
     ],
   });
@@ -288,8 +271,8 @@ export default async function (ctx) {
       { type: 'image', src: 'sf-symbol:arrow.triangle.2.circlepath', color: C.dim, width: 9, height: 9 },
       { type: 'text', text: ` 刷新于 ${d.timeStr}`, font: { size: 9, weight: 'medium' }, textColor: C.dim },
       { type: 'spacer' },
-      { type: 'image', src: 'sf-symbol:calendar', color: C.dim, width: 9, height: 9 },
-      { type: 'text', text: ` 流量重置: ${d.tfReset}`, font: { size: 9, family: 'Menlo' }, textColor: C.dim },
+      { type: 'image', src: 'sf-symbol:arrow.up.arrow.down', color: C.dim, width: 9, height: 9 },
+      { type: 'text', text: ` WAN：${d.detectedWan}`, font: { size: 9, family: 'Menlo' }, textColor: C.dim },
     ],
   };
 
@@ -318,7 +301,7 @@ export default async function (ctx) {
         ...[
           { ic: 'cpu', lb: 'CPU', pt: d.cpuPct, v: `${d.cpuPct}%`, c: C.cpu },
           { ic: 'memorychip', lb: 'MEM', pt: d.memPct, v: `${d.memPct}%`, c: C.mem },
-          { ic: 'antenna.radiowaves.left.and.right', lb: 'TRAF', pt: d.tfPct, v: `${d.tfPct.toFixed(0)}%`, c: getTrafficColor(d.tfPct) }
+          { ic: 'antenna.radiowaves.left.and.right', lb: 'TRAF', pt: 0, v: `↓${fmtBytes(d.tfRx)} ↑${fmtBytes(d.tfTx)}`, c: C.netRx }
         ].map(i => ({
           type: 'stack', direction: 'column', gap: 3, children: [
             { type: 'stack', direction: 'row', alignItems: 'center', gap: 4, children: [
@@ -373,15 +356,11 @@ export default async function (ctx) {
             ]},
             bar(d.diskPct, C.disk, 6),
           ]},
-          { type: 'stack', direction: 'column', gap: 3, children: [
-            { type: 'stack', direction: 'row', alignItems: 'center', gap: 4, children: [
-              { type: 'image', src: 'sf-symbol:antenna.radiowaves.left.and.right', color: getTrafficColor(d.tfPct), width: 11, height: 11 },
-              { type: 'text', text: 'TRAF', font: { size: 11, weight: 'bold' }, textColor: C.text },
-              { type: 'text', text: `${d.tfPct.toFixed(1)}%`, font: { size: 11, weight: 'heavy', family: 'Menlo' }, textColor: getTrafficColor(d.tfPct) },
-              { type: 'spacer' },
-              { type: 'text', text: `↓${fmtBytes(d.tfRx)} ↑${fmtBytes(d.tfTx)} / ${fmtBytes(d.tfTotal)}`, font: { size: 10, family: 'Menlo', weight: 'medium' }, textColor: C.dim },
-            ]},
-            bar(d.tfPct, getTrafficColor(d.tfPct), 6),
+          { type: 'stack', direction: 'row', alignItems: 'center', gap: 4, children: [
+            { type: 'image', src: 'sf-symbol:antenna.radiowaves.left.and.right', color: C.netRx, width: 11, height: 11 },
+            { type: 'text', text: 'TRAF', font: { size: 11, weight: 'bold' }, textColor: C.text },
+            { type: 'spacer' },
+            { type: 'text', text: `↓${fmtBytes(d.tfRx)}  ↑${fmtBytes(d.tfTx)}`, font: { size: 10, family: 'Menlo', weight: 'medium' }, textColor: C.dim },
           ]},
         ]},
         { type: 'spacer' },
@@ -425,13 +404,11 @@ export default async function (ctx) {
       bar(d.diskPct, C.disk, 7),
       divider,
       { type: 'stack', direction: 'row', alignItems: 'center', gap: 6, children: [
-        { type: 'image', src: 'sf-symbol:antenna.radiowaves.left.and.right', color: getTrafficColor(d.tfPct), width: 14, height: 14 },
+        { type: 'image', src: 'sf-symbol:antenna.radiowaves.left.and.right', color: C.netRx, width: 14, height: 14 },
         { type: 'text', text: 'TRAFFIC', font: { size: 12, weight: 'bold' }, textColor: C.text },
-        { type: 'text', text: `${d.tfPct.toFixed(1)}%`, font: { size: 12, weight: 'heavy', family: 'Menlo' }, textColor: getTrafficColor(d.tfPct) },
         { type: 'spacer' },
-        { type: 'text', text: `↓ ${fmtBytes(d.tfRx)}  ↑ ${fmtBytes(d.tfTx)}  /  ${fmtBytes(d.tfTotal)}`, font: { size: 11, family: 'Menlo', weight: 'medium' }, textColor: C.dim },
+        { type: 'text', text: `↓ ${fmtBytes(d.tfRx)}  ↑ ${fmtBytes(d.tfTx)}`, font: { size: 11, family: 'Menlo', weight: 'medium' }, textColor: C.dim },
       ]},
-      bar(d.tfPct, getTrafficColor(d.tfPct), 7),
       { type: 'spacer' },
       footer,
     ],
