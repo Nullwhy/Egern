@@ -171,9 +171,10 @@ export default async function (ctx) {
       'cat /proc/uptime',
       'head -1 /proc/stat',
       "awk '/MemTotal/{t=$2}/MemAvailable/{a=$2}END{print t,a}' /proc/meminfo",
-      "df -B1 2>/dev/null | awk '$6==\"/overlay\"{print; found=1; exit} END{if(!found) exit 1}' || df -B1 / | tail -1",
+      // BusyBox df 不支持 GNU 的 -B1，统一转换其 1K-block 输出为字节。
+      "df -k 2>/dev/null | awk '$6==\"/overlay\"{print $2*1024, $3*1024, $5; found=1; exit} END{if(!found) exit 1}' || df -k / | awk 'NR==2{print $2*1024, $3*1024, $5}'",
       'grep -c ^processor /proc/cpuinfo 2>/dev/null || echo 1',
-      `${wanIfExpr} | xargs -r -I{} awk -F'[: ]+' -v iface='{}' '$1==iface {print $2, $10; found=1} END{if(!found) print \"0 0\"}' /proc/net/dev`,
+      `${wanIfExpr} | xargs -r -I{} awk -F: -v iface='{}' '{name=$1; gsub(/[[:space:]]/, \"\", name); if(name==iface) {data=$2; gsub(/^[[:space:]]+/, \"\", data); split(data, values, /[[:space:]]+/); print values[1], values[9]; found=1}} END{if(!found) print \"0 0\"}' /proc/net/dev`,
       'vnstat --json -m 1 2>/dev/null || echo ""',
       wanIfExpr,
     ];
