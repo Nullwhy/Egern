@@ -174,7 +174,7 @@ export default async function (ctx) {
       // BusyBox df 不支持 GNU 的 -B1，统一转换其 1K-block 输出为字节。
       "df -k 2>/dev/null | awk '$6==\"/overlay\"{print $2*1024, $3*1024, $5; found=1; exit} END{if(!found) exit 1}' || df -k / | awk 'NR==2{print $2*1024, $3*1024, $5}'",
       'grep -c ^processor /proc/cpuinfo 2>/dev/null || echo 1',
-      `${wanIfExpr} | xargs -r -I{} awk -F: -v iface='{}' '{name=$1; gsub(/[[:space:]]/, \"\", name); if(name==iface) {data=$2; gsub(/^[[:space:]]+/, \"\", data); split(data, values, /[[:space:]]+/); print values[1], values[9]; found=1}} END{if(!found) print \"0 0\"}' /proc/net/dev`,
+      `wanIf=$(${wanIfExpr}); awk -F: -v iface=\"$wanIf\" '{name=$1; gsub(/[[:space:]]/, \"\", name); if(name==iface) {data=$2; gsub(/^[[:space:]]+/, \"\", data); split(data, values, /[[:space:]]+/); print values[1], values[9]; found=1}} END{if(!found) print \"0 0\"}' /proc/net/dev`,
       'vnstat --json -m 1 2>/dev/null || echo ""',
       wanIfExpr,
     ];
