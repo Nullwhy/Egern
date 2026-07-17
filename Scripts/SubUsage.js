@@ -315,6 +315,7 @@ function withParam(url, key, value) {
 
 function renderWidget(family, results, refreshAfter) {
   const compact = family === "systemMedium";
+  const compactMulti = compact && results.length >= 2;
   const small = family === "systemSmall";
   const dense = !small && results.length >= 3;
   const palette = makePalette(results[0] && results[0].accent);
@@ -344,11 +345,11 @@ function renderWidget(family, results, refreshAfter) {
     gap: 0,
     refreshAfter,
     children: [
-      renderHeader(results, palette, { compact, dense }),
-      spacer(compact ? 5 : dense ? 7 : 9),
+      renderHeader(results, palette, { compact, compactMulti, dense }),
+      spacer(compactMulti ? 3 : compact ? 5 : dense ? 7 : 9),
       divider(palette),
-      spacer(compact ? 5 : dense ? 7 : 9),
-      ...interleaveSections(results, palette, { compact, dense }),
+      spacer(compactMulti ? 3 : compact ? 5 : dense ? 7 : 9),
+      ...interleaveSections(results, palette, { compact, compactMulti, dense }),
       ...(family === "systemLarge" || family === "systemExtraLarge" ? [{ type: "spacer" }, renderFooter(results, palette)] : []),
     ],
   };
@@ -359,7 +360,8 @@ function interleaveSections(results, palette, options) {
   results.forEach((item, index) => {
     out.push(renderTrafficSection(item, palette, { ...options, index, count: results.length }));
     if (index < results.length - 1) {
-      out.push(spacer(options.compact ? 4 : options.dense ? 6 : 8), divider(palette), spacer(options.compact ? 4 : options.dense ? 6 : 8));
+      const sectionGap = options.compactMulti ? 2 : options.compact ? 4 : options.dense ? 6 : 8;
+      out.push(spacer(sectionGap), divider(palette), spacer(sectionGap));
     }
   });
   return out;
@@ -511,6 +513,20 @@ function sectionProfile(options) {
   }
 
   if (options.compact) {
+    if (options.compactMulti) {
+      return {
+        icon: 13,
+        nameSize: 12,
+        percentSize: 12,
+        valueSize: 9,
+        metaSize: 9,
+        meterHeight: 8,
+        progressHeight: 3,
+        gapAfterHead: 4,
+        gapAfterBars: 1,
+        gapAfterProgress: 2,
+      };
+    }
     return {
       icon: 15,
       nameSize: 14,
