@@ -437,7 +437,7 @@ function renderTrafficSection(data, palette, options = {}) {
             maxLines: 1,
             minScale: options.small ? 0.55 : 0.72,
           },
-          ...(options.small ? [{ type: "spacer" }] : []),
+          { type: "spacer" },
           {
             type: "text",
             text: percent(data.used, data.total),
