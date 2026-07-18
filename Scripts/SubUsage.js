@@ -488,9 +488,9 @@ function renderTrafficSection(data, palette, options = {}) {
 function sectionProfile(options) {
   if (options.small) {
     return {
-      icon: 15,
-      nameSize: 13,
-      percentSize: 13,
+      icon: 17,
+      nameSize: 15,
+      percentSize: 14,
       valueSize: 9,
       metaSize: 9,
       meterHeight: 10,
@@ -504,9 +504,9 @@ function sectionProfile(options) {
   if (options.compact) {
     if (options.compactMulti) {
       return {
-        icon: 13,
-        nameSize: 12,
-        percentSize: 12,
+        icon: 15,
+        nameSize: 14,
+        percentSize: 13,
         valueSize: 9,
         metaSize: 9,
         meterHeight: 8,
@@ -517,9 +517,9 @@ function sectionProfile(options) {
       };
     }
     return {
-      icon: 15,
-      nameSize: 14,
-      percentSize: 14,
+      icon: 17,
+      nameSize: 16,
+      percentSize: 15,
       valueSize: 10,
       metaSize: 10,
       meterHeight: 12,
@@ -532,9 +532,9 @@ function sectionProfile(options) {
 
   if (options.dense) {
     return {
-      icon: 16,
-      nameSize: 15,
-      percentSize: 15,
+      icon: 18,
+      nameSize: 17,
+      percentSize: 16,
       valueSize: 11,
       metaSize: 11,
       meterHeight: 14,
@@ -546,9 +546,9 @@ function sectionProfile(options) {
   }
 
   return {
-    icon: 17,
-    nameSize: 16,
-    percentSize: 16,
+    icon: 19,
+    nameSize: 18,
+    percentSize: 17,
     valueSize: 12,
     metaSize: 12,
     meterHeight: 18,
