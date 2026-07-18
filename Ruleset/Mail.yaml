@@ -1,1 +1,16 @@
-1
+no_resolve: true
+domain_set:
+- imap.gmail.com
+- pop.gmail.com
+- smtp.gmail.com
+- outlook.office365.com
+- smtp.office365.com
+- imap-mail.outlook.com
+- smtp-mail.outlook.com
+- apple.imap.mail.yahoo.com
+- apple.smtp.mail.yahoo.com
+domain_suffix_set:
+- m.hotmail.com
+- imap.yandex.com
+- smtp.yandex.com
+- mail.linux.do
