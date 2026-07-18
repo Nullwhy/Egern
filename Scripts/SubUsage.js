@@ -33,8 +33,6 @@ REFRESH_MINUTES=15
 | `PROTOCOL1` / `PROTOCOL2` / `PROTOCOL3` | 第 1/2/3 个显示标签。 |
 | `SHOW` | 控制显示哪些订阅，例如 `SHOW=1,3` 只显示第 1 和第 3 个。 |
 | `REFRESH_MINUTES` | 刷新间隔，默认 `15` 分钟。 |
-### 用量统计说明
-`Since refresh` 表示从当天脚本首次成功刷新后累计的新增用量。由于 iOS 小组件无法保证在 00:00 自动运行，它不是严格的自然日用量。
 
 ## SHOW 显示规则
 例如 `SHOW=1,3` 表示只显示第 1 和第 3 个订阅。
@@ -406,7 +404,6 @@ function renderHeader(results, palette, options = {}) {
 function renderTrafficSection(data, palette, options = {}) {
   const profile = sectionProfile(options);
   const accent = data.ok ? data.accent || palette.accent : palette.warning;
-  const rightValue = options.small ? "" : `${formatBytes(data.used)} / ${formatBytes(data.total)}`;
   const protocol = data.protocol || "Mixed";
   const meta = options.small
     ? protocol
@@ -448,19 +445,8 @@ function renderTrafficSection(data, palette, options = {}) {
             textColor: accent,
             maxLines: 1,
           },
-          ...(options.small ? [] : [{ type: "spacer" }]),
-          ...(options.small
-            ? []
-            : [
-                {
-                  type: "text",
-                  text: rightValue,
-                  font: roundedFont(profile.valueSize, "semibold"),
-                  textColor: palette.dim,
-                  maxLines: 1,
-                  minScale: 0.72,
-                },
-              ]),
+
+
         ],
       },
       spacer(profile.gapAfterHead),
@@ -475,8 +461,7 @@ function renderTrafficSection(data, palette, options = {}) {
         children: [
           {
             type: "text",
-            // 首次成功刷新才建立基准，故不将其误标为严格的自然日流量。
-            text: `Since refresh ${formatBytes(data.todayUsed)}`,
+            text: `${formatBytes(data.used)} / ${formatBytes(data.total)}`,
             font: roundedFont(profile.metaSize, "semibold"),
             textColor: accent,
             maxLines: 1,
@@ -660,7 +645,7 @@ function renderAccessoryRectangular(results) {
         ],
       },
       { type: "text", text: `${percent(item.used, item.total)}  ${formatBytes(item.used)} / ${formatBytes(item.total)}`, font: roundedFont(11, "semibold") },
-      { type: "text", text: `Since refresh ${formatBytes(item.todayUsed)}  ${item.expire ? dateText(item.expire) : statusText(item)}`, font: roundedFont(11, "semibold"), opacity: 0.7 },
+      { type: "text", text: `${item.expire ? dateText(item.expire) : statusText(item)}`, font: roundedFont(11, "semibold"), opacity: 0.7 },
     ],
   };
 }
