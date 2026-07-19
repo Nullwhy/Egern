@@ -6,7 +6,8 @@
  * KEY: 和风天气 API Key（必填）
  * API_HOST: 你的个人API Host（必填！从控制台获取）
  * LOCATION: 城市名，如"北京"（未填写经纬度时使用）
- * LATITUDE / LONGITUDE: 精确纬度和经度（可选，建议填写，优先于 LOCATION）
+ * COORDINATES: 精确坐标，格式为“纬度,经度”，如 22.5431,114.0579（推荐，优先于 LOCATION）
+ * LATITUDE / LONGITUDE: 旧版分开填写方式（可选，继续兼容）
  * REFRESH_MINUTES: 期望刷新间隔，默认 15 分钟（实际由 iOS 调度）
  *
  * ⚠️ 重要提示
@@ -31,6 +32,7 @@ export default async function (ctx) {
   const apiKey     = (env.KEY || '').trim();
   const apiHostRaw = (env.API_HOST || '').trim();
   const location   = (env.LOCATION || '北京').trim();
+  const coordinates = (env.COORDINATES || '').trim();
   const latitude   = (env.LATITUDE || '').trim();
   const longitude  = (env.LONGITUDE || '').trim();
   const refreshMinutes = Math.max(5, Number(env.REFRESH_MINUTES) || 15);
@@ -42,7 +44,7 @@ export default async function (ctx) {
   const apiHost = normalizeHost(apiHostRaw);
 
   try {
-    const { lon, lat, city } = await getLocation(ctx, location, latitude, longitude, apiKey, apiHost);
+    const { lon, lat, city } = await getLocation(ctx, location, coordinates, latitude, longitude, apiKey, apiHost);
     const now = await fetchWeatherNow(ctx, apiKey, lon, lat, apiHost);
 
     let air = null;
@@ -330,12 +332,20 @@ function isAccessoryFamily(family) {
   return family.startsWith('accessory');
 }
 
-async function getLocation(ctx, locName, latitude, longitude, key, host) {
-  const lat = Number(latitude);
-  const lon = Number(longitude);
-  if (latitude || longitude) {
+async function getLocation(ctx, locName, coordinates, latitude, longitude, key, host) {
+  let coordinateLat = latitude;
+  let coordinateLon = longitude;
+  if (coordinates) {
+    const parts = coordinates.split(',').map(item => item.trim());
+    if (parts.length !== 2) throw new Error('COORDINATES 格式应为：纬度,经度');
+    [coordinateLat, coordinateLon] = parts;
+  }
+
+  const lat = Number(coordinateLat);
+  const lon = Number(coordinateLon);
+  if (coordinateLat || coordinateLon) {
     if (!Number.isFinite(lat) || lat < -90 || lat > 90 || !Number.isFinite(lon) || lon < -180 || lon > 180) {
-      throw new Error('LATITUDE 或 LONGITUDE 格式无效');
+      throw new Error('坐标格式无效，请使用：纬度,经度');
     }
     return { lon: String(lon), lat: String(lat), city: locName || '当前位置' };
   }
