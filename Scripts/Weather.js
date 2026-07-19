@@ -99,7 +99,7 @@ function renderMedium(now, air, city) {
           {
             type: 'text',
             text: timeStr,
-            font: { size: 11 },
+            font: { size: 11, weight: 'bold' },
             textColor: { light: '#8E8E93', dark: '#636366' }
           }
         ]
