@@ -1,7 +1,7 @@
 /**
  * 更新日期：2026-07-13
  * 原作者：Keywos
- * 修改：Nullwhy 添加 sup 上标批次参数
+ * 修改：Nullwhy 添加 sup1/sup2 上标批次、start 跨机场续号
  * 用法：Sub-Store 脚本操作添加
  * SubName.js 以下是此脚本支持的参数，必须以 # 为开头多个参数使用"&"连接，参考上述地址为例使用参数。 禁用缓存url#noCache
  *
@@ -23,7 +23,9 @@
  * [sn=]    设置国家与序号之间的分隔符，默认为空格；
  * 序号参数
  * [one]    清理只有一个节点的地区的01
- * [sup1]   第一个机场添加上标批次，例如 香港¹ 01、香港¹ 02
+ * [start=] 序号起始值，默认 01。用于多个机场分别处理时手动续号，例如上一个机场香港用到 03，本机场写 start=4 → 香港 04、香港 05
+ *          跨机场自动连续编号：把多个机场放进 Sub-Store「集合」后只运行一次本脚本（不要写 start），同地区会自动 香港 01、02、03…
+ * [sup1]   第一个机场添加上标批次，例如 香港¹ 01、香港¹ 02（与 start 可同时用）
  * [sup2]   第二个机场添加上标批次，例如 香港² 01、香港² 02；第三个机场用 sup3，以此类推
  * [flag]   给节点前面加国旗
  *
@@ -75,7 +77,11 @@ const FGF = inArg.fgf == undefined ? " " : decodeURI(inArg.fgf),
   },
   inname = nameMap[inArg.in] || "",
   outputName = nameMap[inArg.out] || "",
-  SUPNUM = sup ? parseInt(sup.replace("sup", ""), 10) || 0 : 0;
+  SUPNUM = sup ? parseInt(sup.replace("sup", ""), 10) || 0 : 0,
+  START = (() => {
+    const n = parseInt(inArg.start, 10);
+    return !isNaN(n) && n > 0 ? n : 1;
+  })();
 // prettier-ignore
 const FG = ['🇭🇰','🇲🇴','🇹🇼','🇯🇵','🇰🇷','🇸🇬','🇺🇸','🇬🇧','🇫🇷','🇩🇪','🇦🇺','🇦🇪','🇦🇫','🇦🇱','🇩🇿','🇦🇴','🇦🇷','🇦🇲','🇦🇹','🇦🇿','🇧🇭','🇧🇩','🇧🇾','🇧🇪','🇧🇿','🇧🇯','🇧🇹','🇧🇴','🇧🇦','🇧🇼','🇧🇷','🇻🇬','🇧🇳','🇧🇬','🇧🇫','🇧🇮','🇰🇭','🇨🇲','🇨🇦','🇨🇻','🇰🇾','🇨🇫','🇹🇩','🇨🇱','🇨🇴','🇰🇲','🇨🇬','🇨🇩','🇨🇷','🇭🇷','🇨🇾','🇨🇿','🇩🇰','🇩🇯','🇩🇴','🇪🇨','🇪🇬','🇸🇻','🇬🇶','🇪🇷','🇪🇪','🇪🇹','🇫🇯','🇫🇮','🇬🇦','🇬🇲','🇬🇪','🇬🇭','🇬🇷','🇬🇱','🇬🇹','🇬🇳','🇬🇾','🇭🇹','🇭🇳','🇭🇺','🇮🇸','🇮🇳','🇮🇩','🇮🇷','🇮🇶','🇮🇪','🇮🇲','🇮🇱','🇮🇹','🇨🇮','🇯🇲','🇯🇴','🇰🇿','🇰🇪','🇰🇼','🇰🇬','🇱🇦','🇱🇻','🇱🇧','🇱🇸','🇱🇷','🇱🇾','🇱🇹','🇱🇺','🇲🇰','🇲🇬','🇲🇼','🇲🇾','🇲🇻','🇲🇱','🇲🇹','🇲🇷','🇲🇺','🇲🇽','🇲🇩','🇲🇨','🇲🇳','🇲🇪','🇲🇦','🇲🇿','🇲🇲','🇳🇦','🇳🇵','🇳🇱','🇳🇿','🇳🇮','🇳🇪','🇳🇬','🇰🇵','🇳🇴','🇴🇲','🇵🇰','🇵🇦','🇵🇾','🇵🇪','🇵🇭','🇵🇹','🇵🇷','🇶🇦','🇷🇴','🇷🇺','🇷🇼','🇸🇲','🇸🇦','🇸🇳','🇷🇸','🇸🇱','🇸🇰','🇸🇮','🇸🇴','🇿🇦','🇪🇸','🇱🇰','🇸🇩','🇸🇷','🇸🇿','🇸🇪','🇨🇭','🇸🇾','🇹🇯','🇹🇿','🇹🇭','🇹🇬','🇹🇴','🇹🇹','🇹🇳','🇹🇷','🇹🇲','🇻🇮','🇺🇬','🇺🇦','🇺🇾','🇺🇿','🇻🇪','🇻🇳','🇾🇪','🇿🇲','🇿🇼','🇦🇩','🇷🇪','🇵🇱','🇬🇺','🇻🇦','🇱🇮','🇨🇼','🇸🇨','🇦🇶','🇬🇮','🇨🇺','🇫🇴','🇦🇽','🇧🇲','🇹🇱']
 // prettier-ignore
@@ -304,11 +310,11 @@ function operator(pro) {
 // prettier-ignore
 function getList(arg) { switch (arg) { case 'us': return EN; case 'gq': return FG; case 'quan': return QC; default: return ZH; }}
 // prettier-ignore
-function jxh(e) { const n = e.reduce((e, n) => { const t = e.find((e) => e.name === n.name); const tail = n._supTail ? FGF + n._supTail : ""; if (t) { t.count++; t.items.push({ ...n, name: `${n.name}${XHFGF}${t.count.toString().padStart(2, "0")}${tail}`, }); } else { e.push({ name: n.name, count: 1, items: [{ ...n, name: `${n.name}${XHFGF}01${tail}` }], }); } delete n._supTail; return e; }, []);const t=(typeof Array.prototype.flatMap==='function'?n.flatMap((e) => e.items):n.reduce((acc, e) => acc.concat(e.items),[])); e.splice(0, e.length, ...t); return e;}
+function jxh(e) { const n = e.reduce((e, n) => { const t = e.find((e) => e.name === n.name); const tail = n._supTail ? FGF + n._supTail : ""; if (t) { t.count++; const num = (START - 1 + t.count).toString().padStart(2, "0"); t.items.push({ ...n, name: `${n.name}${XHFGF}${num}${tail}`, }); } else { e.push({ name: n.name, count: 1, items: [{ ...n, name: `${n.name}${XHFGF}${START.toString().padStart(2, "0")}${tail}` }], }); } delete n._supTail; return e; }, []);const t=(typeof Array.prototype.flatMap==='function'?n.flatMap((e) => e.items):n.reduce((acc, e) => acc.concat(e.items),[])); e.splice(0, e.length, ...t); return e;}
 // prettier-ignore
 function toSupNum(n) { const m = { "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴", "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹" }; return String(n).split("").map((i) => m[i] || i).join(""); }
 // prettier-ignore
-function sxh(e) { const count = {}; e.forEach((n) => { count[n.name] = (count[n.name] || 0) + 1; const tail = n._supTail ? FGF + n._supTail : ""; n.name = `${n.name}${toSupNum(SUPNUM)}${XHFGF}${count[n.name].toString().padStart(2, "0")}${tail}`; delete n._supTail; }); return e; }
+function sxh(e) { const count = {}; e.forEach((n) => { count[n.name] = (count[n.name] || 0) + 1; const num = (START - 1 + count[n.name]).toString().padStart(2, "0"); const tail = n._supTail ? FGF + n._supTail : ""; n.name = `${n.name}${toSupNum(SUPNUM)}${XHFGF}${num}${tail}`; delete n._supTail; }); return e; }
 // prettier-ignore
 function oneP(e) { const t = e.reduce((e, t) => { const n = t.name.replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹]+[^A-Za-z0-9\u00C0-\u017F\u4E00-\u9FFF]*\d+$/, "").replace(/[^A-Za-z0-9\u00C0-\u017F\u4E00-\u9FFF]+\d+$/, ""); if (!e[n]) { e[n] = []; } e[n].push(t); return e; }, {}); for (const e in t) { if (t[e].length === 1 && t[e][0].name.endsWith("01")) {/* const n = t[e][0]; n.name = e;*/ t[e][0].name= t[e][0].name.replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹]+[^A-Za-z0-9\u00C0-\u017F\u4E00-\u9FFF]*01$/, "").replace(/[^.]01/, "") } } return e; }
 // prettier-ignore
