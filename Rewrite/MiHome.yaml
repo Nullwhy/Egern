@@ -1,0 +1,83 @@
+# 米家：去开屏 + 隐藏发现
+# 适用：米家 iOS 11.2.x（基于 2026-07-22 抓包）
+# 用法：Egern → 模块 → 添加 → 选本地文件或 URL
+# 需要：已安装并信任 MITM CA；本模块会解密 home.mi.com
+
+name: "米家去开屏+隐藏发现"
+description: |
+  去掉米家开屏广告，并隐藏底部「发现」Tab。
+  - 开屏：resource/realtime/openingBanner 清空 list；manage 关闭启动相关开关；旧 recommendation 接口兜底
+  - 发现：findTabConfig 关闭 findTab / findTabSwitch
+  请勿 MITM 设备控制域名（api.mijia.tech 等 RC4 接口与本模块无关）。
+author: "Nullwhy"
+icon: "house.fill"
+
+mitm:
+  hostnames:
+    - home.mi.com
+
+http_captures:
+  - home.mi.com
+
+# 开屏素材：直接本地返回空列表（不依赖服务端是否下发）
+map_locals:
+  # 真正的开屏接口（抓包已确认）
+  - match: "^https://home\\.mi\\.com/cgi-op/api/v1/resource/realtime/openingBanner"
+    status_code: 200
+    headers:
+      Content-Type: "application/json; charset=UTF-8"
+    body: '{"result":"ok","retriable":false,"code":0,"data":{"expireTs":0,"list":[]},"extraData":{"expId":""},"description":"成功"}'
+
+  # 旧开屏接口（仍会请求，常为空，做兜底）
+  - match: "^https://home\\.mi\\.com/cgi-op/api/v1/recommendation/openingBanner"
+    status_code: 200
+    headers:
+      Content-Type: "application/json; charset=UTF-8"
+    body: '{"result":"ok","retriable":false,"code":0,"data":null,"extraData":{"expId":""},"description":"succeed"}'
+
+  # 其它运营位兜底（本包多为空，防止以后投放）
+  - match: "^https://home\\.mi\\.com/cgi-op/api/v1/recommendation/carousel/banners"
+    status_code: 200
+    headers:
+      Content-Type: "application/json; charset=UTF-8"
+    body: '{"result":"ok","retriable":false,"code":0,"data":null,"extraData":{"expId":""},"description":"succeed"}'
+
+  - match: "^https://home\\.mi\\.com/cgi-op/api/v1/recommendation/mihome/bottom/tab"
+    status_code: 200
+    headers:
+      Content-Type: "application/json; charset=UTF-8"
+    body: '{"result":"ok","retriable":false,"code":0,"data":null,"extraData":{"expId":""},"description":"succeed"}'
+
+  - match: "^https://home\\.mi\\.com/cgi-op/api/v1/recommendation/myTab"
+    status_code: 200
+    headers:
+      Content-Type: "application/json; charset=UTF-8"
+    body: '{"result":"ok","retriable":false,"code":0,"data":null,"extraData":{"expId":""},"description":"succeed"}'
+
+# 在原始 JSON 上改字段（需 MITM）
+body_rewrites:
+  # 开屏总开关：start/screen 等置 0
+  - response_jq:
+      match: "^https://home\\.mi\\.com/cgi-op/api/v1/resource/realtime/manage"
+      filter: >-
+        .data.startSwitch = 0
+        | .data.screenLoadSwitch = 0
+        | .data.bannerLoadSwitch = 0
+        | .data.bottomSwitch = 0
+        | .data.personalCenterSwitch = 0
+        | .data.contentDisplaySwitch = 0
+
+  # 隐藏发现 Tab（及有品/社区/红点）
+  - response_jq:
+      match: "^https://home\\.mi\\.com/cgi-op/api/v1/common/findTabConfig"
+      filter: >-
+        .data.findTabSwitch = false
+        | .data.findTabAccess.findTab = false
+        | .data.findTabAccess.youPinTab = false
+        | .data.findTabAccess.bbsTabVisible = false
+        | .data.findTabAccess.redDot = false
+
+  # 双保险：若 Map Local 未命中，仍清空开屏 list
+  - response_jq:
+      match: "^https://home\\.mi\\.com/cgi-op/api/v1/resource/realtime/openingBanner"
+      filter: '.data.list = [] | .data.expireTs = 0'
