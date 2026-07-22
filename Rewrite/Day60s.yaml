@@ -37,7 +37,7 @@ scriptings:
       # 格式: 分 时 日 月 星期（5 段）或 秒 分 时 日 月 星期（6 段，视 Egern 版本）
       cron: "{{{CRON}}}"
       timeout: 60
-      script_url: "https://raw.githubusercontent.com/Nullwhy/Egern/main/Scripts/60s.js"
+      script_url: "https://raw.githubusercontent.com/Nullwhy/Egern/main/Rewrite/Day60s.js"
       env:
         MAX_NEWS: "{{{MAX_NEWS}}}"
         OPEN_URL: "{{{OPEN_URL}}}"
