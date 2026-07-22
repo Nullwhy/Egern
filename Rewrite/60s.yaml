@@ -5,14 +5,14 @@ author: "Nullwhy"
 icon: "newspaper.fill"
 
 compat_arguments:
-  MAX_NEWS: "8"
+  MAX_NEWS: "0"
   DEDUPE: "true"
 
 env_schema:
   MAX_NEWS:
     name: 新闻条数
-    description: 通知中最多显示几条
-    default_value: "8"
+    description: 0=全部显示；大于0则只显示前N条
+    default_value: "0"
   DEDUPE:
     name: 同日只推一次
     description: 定时任务建议 true；手动任务模块内固定 false
