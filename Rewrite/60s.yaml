@@ -8,7 +8,7 @@ icon: "newspaper.fill"
 
 # 模块参数（可在 Egern 模块设置里改）
 compat_arguments:
-  CRON: "15 9 * * *"
+  CRON: "15 8 * * *"
   MAX_NEWS: "8"
   OPEN_URL: "image"
   DEDUPE: "true"
@@ -34,9 +34,9 @@ env_schema:
 scriptings:
   - schedule:
       name: "每日60秒"
-      # 默认每天 9:15；可用模块参数覆盖时请在主配置 compat_arguments 里改 CRON，
+      # 默认每天 8:15；可用模块参数覆盖时请在主配置 compat_arguments 里改 CRON，
       # 注意：cron 字段若不支持占位符，请直接改下面表达式。
-      cron: "15 9 * * *"
+      cron: "15 8 * * *"
       timeout: 60
       # 上传到 GitHub 后改成你的 raw 地址，例如：
       # script_url: "https://raw.githubusercontent.com/Nullwhy/Egern/main/Scripts/60s.js"
