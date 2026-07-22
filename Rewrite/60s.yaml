@@ -2,11 +2,12 @@
 # 作者: @Nullwhy
 # 更新: 2026-07-23
 name: "每日60S"
-description: "每天 08:15 推送60秒新闻"
+description: "每天定时推送60秒新闻（默认 08:15）"
 author: "Nullwhy"
 icon: "https://raw.githubusercontent.com/luestr/IconResource/main/App_icon/120px/MoeGirlWiki.png"
 
 compat_arguments:
+  CRON: "15 8 * * *"
   MAX_NEWS: "6"
   OPEN_URL: "image"
   DEDUPE: "false"
@@ -32,7 +33,9 @@ env_schema:
 scriptings:
   - schedule:
       name: "每日60S"
-      cron: "15 8 * * *"
+      # cron 支持模块参数；默认每天 08:15
+      # 格式: 分 时 日 月 星期（5 段）或 秒 分 时 日 月 星期（6 段，视 Egern 版本）
+      cron: "{{{CRON}}}"
       timeout: 60
       script_url: "https://raw.githubusercontent.com/Nullwhy/Egern/main/Scripts/60s.js"
       env:
