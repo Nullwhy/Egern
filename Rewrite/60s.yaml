@@ -1,14 +1,10 @@
 # 每日60秒读懂世界 — Egern 模块
-# 脚本需与模块一并托管（见下方说明）或改 script_url 为你的 raw 地址
-
 name: "每日60秒"
-description: "每天定时推送60秒读懂世界新闻（Egern 原生 schedule）"
+description: "每天 08:15 推送60秒新闻；也可在脚本列表手动运行"
 author: "Nullwhy"
 icon: "newspaper.fill"
 
-# 模块参数（可在 Egern 模块设置里改）
 compat_arguments:
-  CRON: "15 8 * * *"
   MAX_NEWS: "8"
   OPEN_URL: "image"
   DEDUPE: "true"
@@ -20,29 +16,37 @@ env_schema:
     default_value: "8"
   OPEN_URL:
     name: 点击打开
-    description: image=海报图 / link=原文 / api=接口
     options:
       - image
       - link
       - api
   DEDUPE:
     name: 同日只推一次
+    description: 手动调试时可关
     options:
       - "true"
       - "false"
 
 scriptings:
+  # 定时：每天 08:15
   - schedule:
       name: "每日60秒"
-      # 默认每天 8:15；可用模块参数覆盖时请在主配置 compat_arguments 里改 CRON，
-      # 注意：cron 字段若不支持占位符，请直接改下面表达式。
       cron: "15 8 * * *"
       timeout: 60
-      # 上传到 GitHub 后改成你的 raw 地址，例如：
-      # script_url: "https://raw.githubusercontent.com/Nullwhy/Egern/main/Scripts/60s.js"
       script_url: "https://raw.githubusercontent.com/Nullwhy/Egern/main/Scripts/60s.js"
       env:
         MAX_NEWS: "{{{MAX_NEWS}}}"
         OPEN_URL: "{{{OPEN_URL}}}"
         DEDUPE: "{{{DEDUPE}}}"
+        API_URL: "https://60s-api.viki.moe/v2/60s"
+
+  # 手动运行：脚本列表点「运行」用这条（同日去重默认关，方便反复测）
+  - generic:
+      name: "每日60秒-手动"
+      timeout: 60
+      script_url: "https://raw.githubusercontent.com/Nullwhy/Egern/main/Scripts/60s.js"
+      env:
+        MAX_NEWS: "{{{MAX_NEWS}}}"
+        OPEN_URL: "{{{OPEN_URL}}}"
+        DEDUPE: "false"
         API_URL: "https://60s-api.viki.moe/v2/60s"
