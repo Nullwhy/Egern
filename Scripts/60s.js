@@ -1,11 +1,15 @@
 /******************************
 脚本名称: 每日60秒
-Version : v1.1.0
+Version : v1.1.1
 更新时间: 2026-07-23
 平台: Egern
 功能: 每日60秒读懂世界（定时/手动通知）
 脚本作者：
 @Nullwhy 适配Egern（写法参考 Scripts/NodeSeek.js）
+通知排版:
+- 主标题: 每日60S  读懂世界
+- 副标题: 阴历、阳历日期、星期
+- 正文: 新闻列表 + 微语
 使用说明:
 1. 模块 Rewrite/60s.yaml 或主配置添加 schedule / generic
 2. 默认每天 08:15 推送；脚本列表可点「每日60秒-手动」试跑
@@ -17,6 +21,7 @@ Version : v1.1.0
 *******************************/
 
 const SCRIPT_NAME = "每日60秒";
+const TITLE_MAIN = "每日60S  读懂世界";
 const STORE_KEY = "60s_last_date";
 const DEFAULT_API = "https://60s-api.viki.moe/v2/60s";
 const FALLBACK_APIS = [
@@ -75,11 +80,20 @@ function buildBody(news, tip, maxNews) {
   return body || "暂无新闻";
 }
 
+// 副标题：阴历、阳历、星期（按有值拼接）
+function buildSubtitle(lunar, date, dow) {
+  const parts = [];
+  if (lunar) parts.push(lunar);
+  if (date) parts.push(date);
+  if (dow) parts.push(dow);
+  return parts.join("  ") || "读懂世界";
+}
+
 async function fetchNews(ctx, url) {
   const response = await ctx.http.get(url, {
     headers: {
       Accept: "application/json",
-      "User-Agent": "Egern-60s/1.1.0"
+      "User-Agent": "Egern-60s/1.1.1"
     },
     timeout: 20000
   });
@@ -145,7 +159,7 @@ async function main(ctx) {
         const last = await ctx.storage.get(STORE_KEY);
         if (last === date) {
           log(`今日已推送，跳过: ${date}`);
-          notify(SCRIPT_NAME, "已跳过", `今日 ${date} 已推送过`);
+          notify(TITLE_MAIN, "已跳过", `今日 ${date} 已推送过`);
           return;
         }
       } catch (e) {
@@ -153,12 +167,12 @@ async function main(ctx) {
       }
     }
 
-    const title = date
-      ? `${SCRIPT_NAME} · ${date}${dow ? " " + dow : ""}`
-      : SCRIPT_NAME;
-    const subtitle = lunar || tip || "读懂世界";
+    const title = TITLE_MAIN;
+    const subtitle = buildSubtitle(lunar, date, dow);
     const body = buildBody(news, tip, maxNews);
 
+    log(`标题: ${title}`);
+    log(`副标题: ${subtitle}`);
     log(`日期: ${date} 新闻: ${news.length}`);
     if (image) log(`图片: ${image}`);
     if (link) log(`原文: ${link}`);
@@ -176,7 +190,7 @@ async function main(ctx) {
     log("推送完成");
   } catch (error) {
     log(`失败: ${error.message || error}`);
-    notify(SCRIPT_NAME, "获取失败", String(error.message || error).slice(0, 200));
+    notify(TITLE_MAIN, "获取失败", String(error.message || error).slice(0, 200));
   }
 }
 
