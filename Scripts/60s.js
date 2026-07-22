@@ -1,6 +1,6 @@
 /******************************
 脚本名称: 每日60秒
-Version : v1.1.1
+Version : v1.1.2
 更新时间: 2026-07-23
 平台: Egern
 功能: 每日60秒读懂世界（定时/手动通知）
@@ -8,14 +8,14 @@ Version : v1.1.1
 @Nullwhy 适配Egern（写法参考 Scripts/NodeSeek.js）
 通知排版:
 - 主标题: 每日60S  读懂世界
-- 副标题: 阴历、阳历日期、星期
-- 正文: 新闻列表 + 微语
+- 副标题: 阳历日期、星期、阴历（阴历在星期后）
+- 正文: 全部新闻 + 微语（默认不截断条数）
 使用说明:
 1. 模块 Rewrite/60s.yaml 或主配置添加 schedule / generic
 2. 默认每天 08:15 推送；脚本列表可点「每日60秒-手动」试跑
 环境变量 env:
 - API_URL   默认 https://60s-api.viki.moe/v2/60s
-- MAX_NEWS  通知最多展示条数，默认 8
+- MAX_NEWS  最多展示条数，默认 0=全部（系统通知栏仍可能截断超长正文）
 - OPEN_URL  image | link | api，默认 image
 - DEDUPE    true/false，同日只推一次，默认 true（手动脚本模块里为 false）
 *******************************/
@@ -28,6 +28,8 @@ const FALLBACK_APIS = [
   "https://60s-api.viki.moe/v2/60s",
   "https://60s.viki.moe/v2/60s"
 ];
+// 0 = 不限制条数，尽量展示全部新闻 + 微语
+const DEFAULT_MAX_NEWS = 0;
 
 // ========== 工具函数 ==========
 function log(msg) {
@@ -57,13 +59,19 @@ function envBool(env, key, def) {
   return !["0", "false", "no", "off"].includes(v);
 }
 
-function envInt(env, key, def) {
-  const n = parseInt(getEnv(env, [key], String(def)), 10);
-  return Number.isFinite(n) && n > 0 ? n : def;
+// maxNews: 0 / 负数 / 未设 → 全部；>0 → 截取前 N 条
+function envMaxNews(env, key, def) {
+  const raw = getEnv(env, [key], String(def));
+  if (raw === "" || raw === undefined) return def;
+  const n = parseInt(raw, 10);
+  if (!Number.isFinite(n)) return def;
+  return n;
 }
 
 function buildBody(news, tip, maxNews) {
-  const list = Array.isArray(news) ? news.slice(0, maxNews) : [];
+  const all = Array.isArray(news) ? news : [];
+  const list =
+    maxNews && maxNews > 0 ? all.slice(0, maxNews) : all.slice();
   const lines = list.map((item, i) => {
     const t =
       typeof item === "string"
@@ -75,17 +83,16 @@ function buildBody(news, tip, maxNews) {
     lines.push("");
     lines.push(`【微语】${tip}`);
   }
-  let body = lines.join("\n");
-  if (body.length > 900) body = body.slice(0, 897) + "...";
-  return body || "暂无新闻";
+  // 脚本侧不再截断，尽量全部显示；系统通知 UI 仍可能折叠超长内容
+  return lines.join("\n") || "暂无新闻";
 }
 
-// 副标题：阴历、阳历、星期（按有值拼接）
+// 副标题：阳历、星期、阴历（阴历在星期后面）
 function buildSubtitle(lunar, date, dow) {
   const parts = [];
-  if (lunar) parts.push(lunar);
   if (date) parts.push(date);
   if (dow) parts.push(dow);
+  if (lunar) parts.push(lunar);
   return parts.join("  ") || "读懂世界";
 }
 
@@ -138,7 +145,7 @@ async function load60s(ctx, apiUrl) {
 async function main(ctx) {
   const env = (ctx && ctx.env) || {};
   const apiUrl = getEnv(env, ["API_URL"], DEFAULT_API);
-  const maxNews = envInt(env, "MAX_NEWS", 8);
+  const maxNews = envMaxNews(env, "MAX_NEWS", DEFAULT_MAX_NEWS);
   const dedupe = envBool(env, "DEDUPE", true);
 
   log("开始获取每日60秒");
