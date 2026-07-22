@@ -1,6 +1,6 @@
 /******************************
-脚本名称: Day60s
-Version : v1.1.9
+脚本名称: 每日60S
+Version : v1.1.10
 更新时间: 2026-07-23
 平台: Egern
 功能: 每日60秒读懂世界（定时通知）
@@ -15,10 +15,10 @@ Version : v1.1.9
 - DEDUPE    true/false，同日只推一次，默认 false
 *******************************/
 
-const SCRIPT_NAME = "Day60s";
+const SCRIPT_NAME = "每日60S";
 const TITLE_MAIN = "每日60S";
 const SCRIPT_AUTHOR = "@Nullwhy";
-const SCRIPT_VERSION = "v1.1.9";
+const SCRIPT_VERSION = "v1.1.10";
 const SCRIPT_UPDATED = "2026-07-23";
 const STORE_KEY = "60s_last_date";
 const DEFAULT_API = "https://60s-api.viki.moe/v2/60s";
