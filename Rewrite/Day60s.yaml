@@ -8,15 +8,15 @@ icon: "https://raw.githubusercontent.com/luestr/IconResource/main/App_icon/120px
 
 compat_arguments:
   CRON: "15 8 * * *"
-  MAX_NEWS: "6"
+  MAX_NEWS: "4"
   OPEN_URL: "image"
   DEDUPE: "false"
 
 env_schema:
   MAX_NEWS:
     name: 新闻条数
-    description: 默认6（适配通知约8行）；0=全部
-    default_value: "6"
+    description: 默认4（适配通知约8行）；0=全部
+    default_value: "4"
   OPEN_URL:
     name: 点击打开
     description: image=海报图 / none=不跳转
