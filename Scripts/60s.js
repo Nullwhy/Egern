@@ -1,6 +1,6 @@
 /******************************
 脚本名称: 每日60S
-Version : v1.1.4
+Version : v1.1.5
 更新时间: 2026-07-23
 平台: Egern
 功能: 每日60秒读懂世界（定时通知）
@@ -16,14 +16,14 @@ Version : v1.1.4
 环境变量 env:
 - API_URL   默认 https://60s-api.viki.moe/v2/60s
 - MAX_NEWS  新闻条数，默认 6（0=全部）
-- OPEN_URL  image | link | api | none，默认 image
+- OPEN_URL  image | none，默认 image
 - DEDUPE    true/false，同日只推一次，默认 false
 *******************************/
 
 const SCRIPT_NAME = "每日60S";
 const TITLE_MAIN = "每日60S  读懂世界";
 const SCRIPT_AUTHOR = "@Nullwhy";
-const SCRIPT_VERSION = "v1.1.4";
+const SCRIPT_VERSION = "v1.1.5";
 const SCRIPT_UPDATED = "2026-07-23";
 const STORE_KEY = "60s_last_date";
 const DEFAULT_API = "https://60s-api.viki.moe/v2/60s";
@@ -133,10 +133,10 @@ function buildSubtitle(lunar, date, dow) {
 
 function resolveOpenUrl(mode, image, link, apiUrl) {
   const m = (mode || "image").toLowerCase();
+  // 仅支持 image / none（兼容旧值 link、api 时：link→原文，其余默认海报）
   if (m === "none" || m === "off" || m === "false") return "";
-  if (m === "image" && image) return image;
-  if (m === "link" && link) return link;
-  if (m === "api") return apiUrl || DEFAULT_API;
+  if (m === "link" && link) return link; // 旧参数兼容，模块 UI 已去掉
+  if (m === "api") return ""; // 已移除，忽略
   if (image) return image;
   if (link) return link;
   return "";
