@@ -7,7 +7,7 @@
  * - 数据源：https://60s-api.viki.moe/v2/60s（开源 60s API）
  *
  * 用法（模块 schedule 或主配置 scriptings）：
- *   cron: "15 9 * * *"
+ *   cron: "15 8 * * *"
  *   timeout: 60
  *
  * 可选环境变量 env：
