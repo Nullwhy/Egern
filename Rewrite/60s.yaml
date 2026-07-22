@@ -1,28 +1,30 @@
-# 每日60秒 — Egern 模块（脚本写法对齐 Scripts/NodeSeek.js）
-name: "每日60秒"
-description: "每天 08:15 推送；也可运行「每日60秒-手动」"
+# 每日60S — Egern 模块
+# 作者: @Nullwhy
+# 更新: 2026-07-23
+name: "每日60S"
+description: "每天 08:15 推送60秒新闻；也可手动运行"
 author: "Nullwhy"
 icon: "newspaper.fill"
 
 compat_arguments:
-  MAX_NEWS: "0"
+  MAX_NEWS: "6"
   DEDUPE: "true"
 
 env_schema:
   MAX_NEWS:
     name: 新闻条数
-    description: 0=全部显示；大于0则只显示前N条
-    default_value: "0"
+    description: 默认6（适配通知约8行）；0=全部；大于0为前N条
+    default_value: "6"
   DEDUPE:
     name: 同日只推一次
-    description: 定时任务建议 true；手动任务模块内固定 false
+    description: 定时建议 true；手动任务模块内固定 false
     options:
       - "true"
       - "false"
 
 scriptings:
   - schedule:
-      name: "每日60秒"
+      name: "每日60S"
       cron: "15 8 * * *"
       timeout: 60
       script_url: "https://raw.githubusercontent.com/Nullwhy/Egern/main/Scripts/60s.js"
@@ -32,7 +34,7 @@ scriptings:
         API_URL: "https://60s-api.viki.moe/v2/60s"
 
   - generic:
-      name: "每日60秒-手动"
+      name: "每日60S-手动"
       timeout: 60
       script_url: "https://raw.githubusercontent.com/Nullwhy/Egern/main/Scripts/60s.js"
       env:
