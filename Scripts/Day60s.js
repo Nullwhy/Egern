@@ -1,6 +1,6 @@
 /******************************
 脚本名称: 每日60S
-Version : v1.1.13
+Version : v1.1.14
 更新时间: 2026-07-23
 平台: Egern
 功能: 每日60秒读懂世界（定时通知）
@@ -18,40 +18,38 @@ Version : v1.1.13
 const SCRIPT_NAME = "每日60S";
 const TITLE_MAIN = "每日60S · 读懂世界 💭";
 const SCRIPT_AUTHOR = "@Nullwhy";
-const SCRIPT_VERSION = "v1.1.13";
+const SCRIPT_VERSION = "v1.1.14";
 const SCRIPT_UPDATED = "2026-07-23";
 const STORE_KEY = "60s_last_date";
 const DEFAULT_API = "https://60s-api.viki.moe/v2/60s";
-const FALLBACK_APIS = [
-  "https://60s-api.viki.moe/v2/60s",
-  "https://60s.viki.moe/v2/60s"
-];
+const FALLBACK_APIS = ["https://60s.viki.moe/v2/60s"];
 const DEFAULT_MAX_NEWS = 4;
 
 function log(msg) {
-  console.log(`[${SCRIPT_NAME}] ${msg}`);
+  console.log("[" + SCRIPT_NAME + "] " + msg);
 }
 
 /** 通知 + 点击跳转（Options.url / Open Link） */
 function notifyWithCtx(ctx, title, subtitle, body, openUrl) {
-  console.log(`📢 ${title} - ${subtitle}: ${body}`);
-  if (openUrl) console.log(`🔗 ${openUrl}`);
+  console.log("📢 " + title + " - " + subtitle + ": " + body);
+  if (openUrl) console.log("🔗 " + openUrl);
 
-  // 1) $notification.post 第四参 { url }（你之前成功时详情里有 Options.url）
   if (typeof $notification !== "undefined" && $notification.post) {
     try {
       if (openUrl) {
         $notification.post(title, subtitle, body, { url: openUrl });
-        return;
+      } else {
+        $notification.post(title, subtitle, body);
       }
-      $notification.post(title, subtitle, body);
       return;
     } catch (e1) {
       try {
         if (openUrl) {
           $notification.post(title, subtitle, body, openUrl);
-          return;
+        } else {
+          $notification.post(title, subtitle, body);
         }
+        return;
       } catch (e2) {
         try {
           $notification.post(title, subtitle, body);
@@ -61,15 +59,10 @@ function notifyWithCtx(ctx, title, subtitle, body, openUrl) {
     }
   }
 
-  // 2) ctx.notify 回退
   if (ctx && typeof ctx.notify === "function") {
     try {
       const payload = { title: title, subtitle: subtitle, body: body };
-      if (openUrl) {
-        payload.url = openUrl;
-        payload.open_url = openUrl;
-        payload.openUrl = openUrl;
-      }
+      if (openUrl) payload.url = openUrl;
       return ctx.notify(payload);
     } catch (e) {
       log("ctx.notify 失败: " + (e && e.message ? e.message : e));
@@ -80,8 +73,7 @@ function notifyWithCtx(ctx, title, subtitle, body, openUrl) {
 function getEnv(env, names, fallback) {
   if (fallback === undefined) fallback = "";
   for (let i = 0; i < names.length; i++) {
-    const name = names[i];
-    const value = env && env[name];
+    const value = env && env[names[i]];
     if (value !== undefined && value !== null && String(value).trim() !== "") {
       return String(value).trim();
     }
@@ -95,15 +87,13 @@ function envBool(env, key, def) {
 }
 
 function envMaxNews(env, key, def) {
-  const raw = getEnv(env, [key], String(def));
-  const n = parseInt(raw, 10);
-  if (!Number.isFinite(n)) return def;
-  return n;
+  const n = parseInt(getEnv(env, [key], String(def)), 10);
+  return Number.isFinite(n) ? n : def;
 }
 
 function buildBody(news, tip, maxNews) {
   const all = Array.isArray(news) ? news : [];
-  const list = maxNews && maxNews > 0 ? all.slice(0, maxNews) : all.slice();
+  const list = maxNews > 0 ? all.slice(0, maxNews) : all.slice();
   const lines = list.map(function (item, i) {
     const t =
       typeof item === "string"
@@ -119,9 +109,7 @@ function buildBody(news, tip, maxNews) {
 }
 
 // 副标题：阳历  星期  ·  阴历
-// 例：2026-07-23  星期三  ·  丙午年六月初十
 function buildSubtitle(lunar, date, dow) {
-  // 2026-07-23  星期三  ·  丙午年六月初十
   const left = [];
   if (date) left.push(date);
   if (dow) left.push(dow);
@@ -132,15 +120,11 @@ function buildSubtitle(lunar, date, dow) {
   return "读懂世界";
 }
 
-function resolveOpenUrl(mode, image, link, apiUrl) {
+// OPEN_URL: image | none
+function resolveOpenUrl(mode, image) {
   const m = (mode || "image").toLowerCase();
-  // 仅支持 image / none（兼容旧值 link、api 时：link→原文，其余默认海报）
   if (m === "none" || m === "off" || m === "false") return "";
-  if (m === "link" && link) return link; // 旧参数兼容，模块 UI 已去掉
-  if (m === "api") return ""; // 已移除，忽略
-  if (image) return image;
-  if (link) return link;
-  return "";
+  return image || "";
 }
 
 async function fetchNews(ctx, url) {
@@ -162,7 +146,14 @@ async function fetchNews(ctx, url) {
 }
 
 async function load60s(ctx, apiUrl) {
-  const urls = [apiUrl].concat(FALLBACK_APIS.filter(function (u) { return u !== apiUrl; }));
+  const seen = {};
+  const urls = [];
+  [apiUrl].concat(FALLBACK_APIS).forEach(function (u) {
+    if (u && !seen[u]) {
+      seen[u] = true;
+      urls.push(u);
+    }
+  });
   let lastErr;
   for (let i = 0; i < urls.length; i++) {
     const url = urls[i];
@@ -186,7 +177,16 @@ async function main(ctx) {
   const dedupe = envBool(env, "DEDUPE", false);
   const openMode = getEnv(env, ["OPEN_URL"], "image");
 
-  log("开始获取 " + SCRIPT_NAME + " | " + SCRIPT_VERSION + " | " + SCRIPT_AUTHOR + " | " + SCRIPT_UPDATED);
+  log(
+    "开始获取 " +
+      SCRIPT_NAME +
+      " | " +
+      SCRIPT_VERSION +
+      " | " +
+      SCRIPT_AUTHOR +
+      " | " +
+      SCRIPT_UPDATED
+  );
 
   try {
     const json = await load60s(ctx, apiUrl);
@@ -195,7 +195,6 @@ async function main(ctx) {
     const news = data.news || [];
     const tip = data.tip || "";
     const image = data.image || data.cover || "";
-    const link = data.link || "";
     const dow = data.day_of_week || "";
     const lunar = data.lunar_date || "";
 
@@ -204,7 +203,13 @@ async function main(ctx) {
         const last = await ctx.storage.get(STORE_KEY);
         if (last === date) {
           log("今日已推送，跳过: " + date);
-          await notifyWithCtx(ctx, TITLE_MAIN, "已跳过", "今日 " + date + " 已推送过", "");
+          await notifyWithCtx(
+            ctx,
+            TITLE_MAIN,
+            "已跳过",
+            "今日 " + date + " 已推送过",
+            ""
+          );
           return;
         }
       } catch (e) {
@@ -212,17 +217,23 @@ async function main(ctx) {
       }
     }
 
-    const title = TITLE_MAIN;
     const subtitle = buildSubtitle(lunar, date, dow);
     const body = buildBody(news, tip, maxNews);
-    const openUrl = resolveOpenUrl(openMode, image, link, apiUrl);
+    const openUrl = resolveOpenUrl(openMode, image);
 
-    log("标题: " + title);
+    log("标题: " + TITLE_MAIN);
     log("副标题: " + subtitle);
-    log("日期: " + date + " 展示: " + (maxNews > 0 ? Math.min(maxNews, news.length) : news.length) + "/" + news.length);
+    log(
+      "日期: " +
+        date +
+        " 展示: " +
+        (maxNews > 0 ? Math.min(maxNews, news.length) : news.length) +
+        "/" +
+        news.length
+    );
     if (openUrl) log("点击跳转: " + openUrl);
 
-    await notifyWithCtx(ctx, title, subtitle, body, openUrl);
+    await notifyWithCtx(ctx, TITLE_MAIN, subtitle, body, openUrl);
 
     if (dedupe && date) {
       try {
