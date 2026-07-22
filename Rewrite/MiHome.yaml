@@ -1,9 +1,8 @@
 # 米家：去除开屏广告 + 隐藏发现
-# 基于 2026-07-22 抓包；若仍异常请先关模块验证
-# Egern 远程: https://raw.githubusercontent.com/Nullwhy/Egern/main/Rewrite/MiHome.yaml
-# 更新: 2026-07-22 13:25 UTC
+# 适配版本: 11.2.202
+# 更新时间: 2026-07-22 21:28
 
-name: "去除米家开屏广告"
+name: "米家"
 description: "去除米家开屏广告"
 author: "Nullwhy"
 icon: "https://raw.githubusercontent.com/luestr/IconResource/main/App_icon/120px/MiHome.png"
