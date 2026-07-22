@@ -32,7 +32,7 @@ env_schema:
 
 scriptings:
   - schedule:
-      name: "每日60S"
+      name: "Day60s"
       # cron 支持模块参数；默认每天 08:15
       # 格式: 分 时 日 月 星期（5 段）或 秒 分 时 日 月 星期（6 段，视 Egern 版本）
       cron: "{{{CRON}}}"
