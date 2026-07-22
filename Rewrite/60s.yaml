@@ -1,12 +1,11 @@
-# 每日60秒读懂世界 — Egern 模块
+# 每日60秒 — Egern 模块（脚本写法对齐 Scripts/NodeSeek.js）
 name: "每日60秒"
-description: "每天 08:15 推送60秒新闻；也可在脚本列表手动运行"
+description: "每天 08:15 推送；也可运行「每日60秒-手动」"
 author: "Nullwhy"
 icon: "newspaper.fill"
 
 compat_arguments:
   MAX_NEWS: "8"
-  OPEN_URL: "image"
   DEDUPE: "true"
 
 env_schema:
@@ -14,21 +13,14 @@ env_schema:
     name: 新闻条数
     description: 通知中最多显示几条
     default_value: "8"
-  OPEN_URL:
-    name: 点击打开
-    options:
-      - image
-      - link
-      - api
   DEDUPE:
     name: 同日只推一次
-    description: 手动调试时可关
+    description: 定时任务建议 true；手动任务模块内固定 false
     options:
       - "true"
       - "false"
 
 scriptings:
-  # 定时：每天 08:15
   - schedule:
       name: "每日60秒"
       cron: "15 8 * * *"
@@ -36,17 +28,14 @@ scriptings:
       script_url: "https://raw.githubusercontent.com/Nullwhy/Egern/main/Scripts/60s.js"
       env:
         MAX_NEWS: "{{{MAX_NEWS}}}"
-        OPEN_URL: "{{{OPEN_URL}}}"
         DEDUPE: "{{{DEDUPE}}}"
         API_URL: "https://60s-api.viki.moe/v2/60s"
 
-  # 手动运行：脚本列表点「运行」用这条（同日去重默认关，方便反复测）
   - generic:
       name: "每日60秒-手动"
       timeout: 60
       script_url: "https://raw.githubusercontent.com/Nullwhy/Egern/main/Scripts/60s.js"
       env:
         MAX_NEWS: "{{{MAX_NEWS}}}"
-        OPEN_URL: "{{{OPEN_URL}}}"
         DEDUPE: "false"
         API_URL: "https://60s-api.viki.moe/v2/60s"
