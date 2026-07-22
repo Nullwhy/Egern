@@ -4,7 +4,7 @@
 name: "每日60S"
 description: "每天 08:15 推送60秒新闻；也可手动运行"
 author: "Nullwhy"
-icon: "newspaper.fill"
+icon: "https://raw.githubusercontent.com/luestr/IconResource/main/App_icon/120px/MoeGirlWiki.png"
 
 compat_arguments:
   MAX_NEWS: "6"
