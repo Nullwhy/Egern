@@ -1,12 +1,9 @@
-# 米家：去开屏 + 隐藏发现（保守版，降低闪退风险）
+# 米家：去除开屏广告 + 隐藏发现
 # 基于 2026-07-22 抓包；若仍异常请先关模块验证
 # Egern 远程: https://raw.githubusercontent.com/Nullwhy/Egern/main/Rewrite/MiHome.yaml
 
 name: "米家去开屏+隐藏发现"
-description: |
-  去掉米家开屏，并尝试隐藏「发现」Tab。
-  v2 保守：只改有明文结构的接口；不再伪造 recommendation 空接口响应；
-  不再改 manage 总开关（易导致启动异常）。
+description: "去除米家开屏广告"
 author: "Nullwhy"
 icon: "https://raw.githubusercontent.com/luestr/IconResource/main/App_icon/120px/MiHome.png"
 
