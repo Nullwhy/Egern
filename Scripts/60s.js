@@ -1,15 +1,14 @@
 /******************************
 脚本名称: 每日60S
-Version : v1.1.5
+Version : v1.1.6
 更新时间: 2026-07-23
 平台: Egern
 功能: 每日60秒读懂世界（定时通知）
 脚本作者: @Nullwhy
 通知排版:
-- 主标题: 每日60S  读懂世界
-- 副标题: 阳历日期、星期、阴历
-- 正文: 默认 6 条新闻 + 微语
-- 点击: OPEN_URL 控制跳转（默认 image 海报）
+- 主标题: 每日60S
+- 副标题: 阳历日期  星期  ·  阴历
+- 正文: 新闻列表 + 微语
 使用说明:
 1. 模块 Rewrite/60s.yaml 或主配置添加 schedule
 2. 默认每天 08:15 推送
@@ -21,9 +20,9 @@ Version : v1.1.5
 *******************************/
 
 const SCRIPT_NAME = "每日60S";
-const TITLE_MAIN = "每日60S  读懂世界";
+const TITLE_MAIN = "每日60S";
 const SCRIPT_AUTHOR = "@Nullwhy";
-const SCRIPT_VERSION = "v1.1.5";
+const SCRIPT_VERSION = "v1.1.6";
 const SCRIPT_UPDATED = "2026-07-23";
 const STORE_KEY = "60s_last_date";
 const DEFAULT_API = "https://60s-api.viki.moe/v2/60s";
@@ -123,12 +122,17 @@ function buildBody(news, tip, maxNews) {
   return lines.join("\n") || "暂无新闻";
 }
 
+// 副标题：阳历  星期  ·  阴历
+// 例：2026-07-23  星期三  ·  丙午年六月初十
 function buildSubtitle(lunar, date, dow) {
-  const parts = [];
-  if (date) parts.push(date);
-  if (dow) parts.push(dow);
-  if (lunar) parts.push(lunar);
-  return parts.join("  ") || "读懂世界";
+  const left = [];
+  if (date) left.push(date);
+  if (dow) left.push(dow);
+  const leftStr = left.join("  ");
+  if (leftStr && lunar) return leftStr + "  ·  " + lunar;
+  if (leftStr) return leftStr;
+  if (lunar) return lunar;
+  return "读懂世界";
 }
 
 function resolveOpenUrl(mode, image, link, apiUrl) {
