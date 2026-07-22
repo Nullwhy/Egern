@@ -1,35 +1,37 @@
 /******************************
-脚本名称: 每日60秒
-Version : v1.1.2
+脚本名称: 每日60S
+Version : v1.1.3
 更新时间: 2026-07-23
 平台: Egern
 功能: 每日60秒读懂世界（定时/手动通知）
-脚本作者：
-@Nullwhy 适配Egern（写法参考 Scripts/NodeSeek.js）
+脚本作者: @Nullwhy
 通知排版:
 - 主标题: 每日60S  读懂世界
-- 副标题: 阳历日期、星期、阴历（阴历在星期后）
-- 正文: 全部新闻 + 微语（默认不截断条数）
+- 副标题: 阳历日期、星期、阴历
+- 正文: 默认 6 条新闻 + 微语（适配通知约 8 行可视）
 使用说明:
 1. 模块 Rewrite/60s.yaml 或主配置添加 schedule / generic
-2. 默认每天 08:15 推送；脚本列表可点「每日60秒-手动」试跑
+2. 默认每天 08:15 推送；脚本列表可点「每日60S-手动」试跑
 环境变量 env:
 - API_URL   默认 https://60s-api.viki.moe/v2/60s
-- MAX_NEWS  最多展示条数，默认 0=全部（系统通知栏仍可能截断超长正文）
+- MAX_NEWS  新闻条数，默认 6（0=全部；通知栏约 8 行，建议 5~6）
 - OPEN_URL  image | link | api，默认 image
-- DEDUPE    true/false，同日只推一次，默认 true（手动脚本模块里为 false）
+- DEDUPE    true/false，同日只推一次，默认 true（手动脚本模块内为 false）
 *******************************/
 
-const SCRIPT_NAME = "每日60秒";
+const SCRIPT_NAME = "每日60S";
 const TITLE_MAIN = "每日60S  读懂世界";
+const SCRIPT_AUTHOR = "@Nullwhy";
+const SCRIPT_VERSION = "v1.1.3";
+const SCRIPT_UPDATED = "2026-07-23";
 const STORE_KEY = "60s_last_date";
 const DEFAULT_API = "https://60s-api.viki.moe/v2/60s";
 const FALLBACK_APIS = [
   "https://60s-api.viki.moe/v2/60s",
   "https://60s.viki.moe/v2/60s"
 ];
-// 0 = 不限制条数，尽量展示全部新闻 + 微语
-const DEFAULT_MAX_NEWS = 0;
+// 通知详情约 8 行可视：6 条新闻 + 空行 + 微语 ≈ 8 行
+const DEFAULT_MAX_NEWS = 6;
 
 // ========== 工具函数 ==========
 function log(msg) {
@@ -59,7 +61,7 @@ function envBool(env, key, def) {
   return !["0", "false", "no", "off"].includes(v);
 }
 
-// maxNews: 0 / 负数 / 未设 → 全部；>0 → 截取前 N 条
+// maxNews: 0 = 全部；>0 = 前 N 条
 function envMaxNews(env, key, def) {
   const raw = getEnv(env, [key], String(def));
   if (raw === "" || raw === undefined) return def;
@@ -83,11 +85,11 @@ function buildBody(news, tip, maxNews) {
     lines.push("");
     lines.push(`【微语】${tip}`);
   }
-  // 脚本侧不再截断，尽量全部显示；系统通知 UI 仍可能折叠超长内容
+  // 不在脚本侧按字符硬截断；条数由 MAX_NEWS 控制以适配约 8 行通知
   return lines.join("\n") || "暂无新闻";
 }
 
-// 副标题：阳历、星期、阴历（阴历在星期后面）
+// 副标题：阳历、星期、阴历（阴历在星期后）
 function buildSubtitle(lunar, date, dow) {
   const parts = [];
   if (date) parts.push(date);
@@ -100,7 +102,7 @@ async function fetchNews(ctx, url) {
   const response = await ctx.http.get(url, {
     headers: {
       Accept: "application/json",
-      "User-Agent": "Egern-60s/1.1.1"
+      "User-Agent": `Egern-60s/${SCRIPT_VERSION}`
     },
     timeout: 20000
   });
@@ -148,7 +150,7 @@ async function main(ctx) {
   const maxNews = envMaxNews(env, "MAX_NEWS", DEFAULT_MAX_NEWS);
   const dedupe = envBool(env, "DEDUPE", true);
 
-  log("开始获取每日60秒");
+  log(`开始获取 ${SCRIPT_NAME} | ${SCRIPT_VERSION} | ${SCRIPT_AUTHOR} | ${SCRIPT_UPDATED}`);
 
   try {
     const json = await load60s(ctx, apiUrl);
@@ -180,7 +182,7 @@ async function main(ctx) {
 
     log(`标题: ${title}`);
     log(`副标题: ${subtitle}`);
-    log(`日期: ${date} 新闻: ${news.length}`);
+    log(`日期: ${date} 展示: ${maxNews > 0 ? Math.min(maxNews, news.length) : news.length}/${news.length}`);
     if (image) log(`图片: ${image}`);
     if (link) log(`原文: ${link}`);
 
