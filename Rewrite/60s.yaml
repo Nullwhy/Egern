@@ -14,15 +14,13 @@ compat_arguments:
 env_schema:
   MAX_NEWS:
     name: 新闻条数
-    description: 默认6（适配通知约8行）；0=全部
+    description: image=海报图 / none=不跳转
     default_value: "6"
   OPEN_URL:
     name: 点击打开
-    description: image=海报 / link=原文 / api=接口 / none=不跳转
+    description: image=海报图 / none=不跳转
     options:
       - image
-      - link
-      - api
       - none
   DEDUPE:
     name: 同日只推一次
