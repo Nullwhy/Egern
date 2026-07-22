@@ -8,7 +8,7 @@ description: |
   v2 保守：只改有明文结构的接口；不再伪造 recommendation 空接口响应；
   不再改 manage 总开关（易导致启动异常）。
 author: "Nullwhy"
-icon: "house.fill"
+icon: "https://raw.githubusercontent.com/luestr/IconResource/main/App_icon/120px/MiHome.png"
 
 mitm:
   hostnames:
