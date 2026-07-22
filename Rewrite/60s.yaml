@@ -2,22 +2,31 @@
 # 作者: @Nullwhy
 # 更新: 2026-07-23
 name: "每日60S"
-description: "每天 08:15 推送60秒新闻；也可手动运行"
+description: "每天 08:15 推送60秒新闻"
 author: "Nullwhy"
 icon: "https://raw.githubusercontent.com/luestr/IconResource/main/App_icon/120px/MoeGirlWiki.png"
 
 compat_arguments:
   MAX_NEWS: "6"
-  DEDUPE: "true"
+  OPEN_URL: "image"
+  DEDUPE: "false"
 
 env_schema:
   MAX_NEWS:
     name: 新闻条数
-    description: 默认6（适配通知约8行）；0=全部；大于0为前N条
+    description: 默认6（适配通知约8行）；0=全部
     default_value: "6"
+  OPEN_URL:
+    name: 点击打开
+    description: image=海报 / link=原文 / api=接口 / none=不跳转
+    options:
+      - image
+      - link
+      - api
+      - none
   DEDUPE:
     name: 同日只推一次
-    description: 定时建议 true；手动任务模块内固定 false
+    description: 默认关闭
     options:
       - "true"
       - "false"
@@ -30,14 +39,6 @@ scriptings:
       script_url: "https://raw.githubusercontent.com/Nullwhy/Egern/main/Scripts/60s.js"
       env:
         MAX_NEWS: "{{{MAX_NEWS}}}"
+        OPEN_URL: "{{{OPEN_URL}}}"
         DEDUPE: "{{{DEDUPE}}}"
-        API_URL: "https://60s-api.viki.moe/v2/60s"
-
-  - generic:
-      name: "每日60S-手动"
-      timeout: 60
-      script_url: "https://raw.githubusercontent.com/Nullwhy/Egern/main/Scripts/60s.js"
-      env:
-        MAX_NEWS: "{{{MAX_NEWS}}}"
-        DEDUPE: "false"
         API_URL: "https://60s-api.viki.moe/v2/60s"
