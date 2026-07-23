@@ -1,14 +1,15 @@
 /******************************
 脚本名称: NodeSeek
-Version : v1.0.1
+Version : v1.0.2
 更新时间: 2026-06-17
 平台: Egern
 功能: NodeSeek 每日签到
 脚本作者：
 @Curtinp118      @Nullwhy 适配Egern
 使用说明:
-1. 添加 HTTP 请求脚本抓取请求头
-2. 添加定时任务自动签到
+1. 模块打开「抓包」后访问 NodeSeek 个人页保存请求头
+2. 抓包成功后请关闭「抓包」
+3. 定时/手动运行签到
 *******************************/
 
 const SCRIPT_NAME = "NodeSeek🎉";
@@ -17,6 +18,16 @@ const STORE_KEY = "nodeseek_headers";
 // ========== 工具函数 ==========
 function log(msg) {
   console.log(`[${SCRIPT_NAME}] ${msg}`);
+}
+
+function envBool(env, key, def) {
+  if (!env || env[key] === undefined || env[key] === null || String(env[key]).trim() === "") {
+    return !!def;
+  }
+  const v = String(env[key]).trim().toLowerCase();
+  if (["1", "true", "yes", "on"].indexOf(v) !== -1) return true;
+  if (["0", "false", "no", "off"].indexOf(v) !== -1) return false;
+  return !!def;
 }
 
 // 修复后的通知函数：调用 Egern 原生通知 API
@@ -35,7 +46,12 @@ async function main(ctx) {
   const isCapture = ctx.request !== undefined;
   
   if (isCapture) {
-    // 抓取请求头模式
+    // 抓取请求头模式（需模块打开「抓包」开关）
+    const env = (ctx && ctx.env) || {};
+    if (!envBool(env, "ENABLE_CAPTURE", false) && !envBool(env, "CAPTURE", false)) {
+      log("抓包开关已关闭，跳过");
+      return { response: ctx.response };
+    }
     log("开始抓取请求头");
     
     const headers = ctx.request.headers || {};
@@ -59,7 +75,7 @@ async function main(ctx) {
     
     await ctx.storage.set(STORE_KEY, JSON.stringify(saved));
     log(`✅ 请求头已保存，共 ${Object.keys(saved).length} 个字段`);
-    notify(SCRIPT_NAME, "抓包成功", "请求头已保存");
+    notify(SCRIPT_NAME, "抓包成功", "请求头已保存，请关闭模块「抓包」开关");
     
     return { response: ctx.response };
     
