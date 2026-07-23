@@ -32,6 +32,7 @@ env_schema:
   MULTI_NOTIFY:
     name: 多条通知
     description: 开启后拆成多条通知以显示更多新闻；默认关闭
+    default_value: "false"
     options:
       - "false"
       - "true"
@@ -42,12 +43,14 @@ env_schema:
   OPEN_URL:
     name: 点击通知
     description: none=不跳转 / image=打开海报
+    default_value: "image"
     options:
       - image
       - none
   DEDUPE:
     name: 同日只推一次
-    description: 默认开启
+    description: 默认开启；同一天只推送一次
+    default_value: "true"
     options:
       - "true"
       - "false"
