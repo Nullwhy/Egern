@@ -1,6 +1,6 @@
 /******************************
 脚本名称: 每日60S
-Version : v1.2.3
+Version : v1.2.4
 更新时间: 2026-07-23
 平台: Egern
 功能: 每日60秒读懂世界（定时通知）
@@ -19,7 +19,7 @@ Version : v1.2.3
 const SCRIPT_NAME = "每日60S";
 const TITLE_MAIN = "每日60S · 读懂世界 💭";
 const SCRIPT_AUTHOR = "@Nullwhy";
-const SCRIPT_VERSION = "v1.2.3";
+const SCRIPT_VERSION = "v1.2.4";
 const SCRIPT_UPDATED = "2026-07-23";
 const STORE_KEY = "60s_last_date";
 const DEFAULT_API = "https://60s-api.viki.moe/v2/60s";
@@ -130,48 +130,32 @@ function buildSubtitle(lunar, date, dow) {
   return "读懂世界";
 }
 
-/** ALAPI 等图床直链常强制下载，包一层图片代理便于浏览器内预览 */
-/** 将图片做成 HTML 预览页，避免 file.alapi.cn 直链弹下载 / 外站代理 403 */
-function toImagePreviewOpenUrl(url) {
-  if (!url) return "";
-  const u = String(url).trim();
-  if (!u) return "";
-  // 已是 data HTML 则原样返回
-  if (/^data:text\/html/i.test(u)) return u;
-
-  // 非 ALAPI 强制下载图床：可直接打开
-  const needHtmlShell =
-    /file\.alapi\.cn/i.test(u) || /[?&](download|attachment)=/i.test(u);
-
-  if (!needHtmlShell) {
-    return u;
-  }
-
-  // 用 data:text/html 内嵌 <img>，Safari 一般按网页显示而不是「下载文件」
-  // 注意：部分环境对 data URL 长度/策略有限制；失败时回退原链
-  const safe = u.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
-  const html =
-    "<!DOCTYPE html><html><head><meta charset=\\\"utf-8\\\">" +
-    "<meta name=\\\"viewport\\\" content=\\\"width=device-width,initial-scale=1\\\">" +
-    "<title>每日60S</title>" +
-    "<style>html,body{margin:0;padding:0;background:#0b0b0b;min-height:100%;}" +
-    "img{display:block;width:100%;height:auto;margin:0 auto}</style></head>" +
-    "<body><img src=\\\"" +
-    safe +
-    "\\\" alt=\\\"60s\\\"/></body></html>";
-
-  try {
-    return "data:text/html;charset=utf-8," + encodeURIComponent(html);
-  } catch (e) {
-    return u;
-  }
-}
-
-function resolveOpenUrl(mode, image) {
+/**
+ * image 模式点击目标：
+ * - 有 TOKEN：打开 ALAPI 官方 format=image（你已验证可预览）
+ * - 无 TOKEN：仅使用非 file.alapi.cn 的可预览直链
+ * 不再使用 wsrv / data: HTML（前者 403，后者易不被 openUrl 支持）
+ */
+function resolveOpenUrl(mode, image, token) {
   const m = (mode || "image").toLowerCase();
   if (m === "none" || m === "off" || m === "false") return "";
-  // image：始终给可点的 URL，避免空 action 掉进 Egern 脚本记录
-  return toImagePreviewOpenUrl(image);
+
+  const tok = (token || "").trim();
+  if (tok) {
+    return (
+      ALAPI_URL +
+      "?token=" +
+      encodeURIComponent(tok) +
+      "&format=image"
+    );
+  }
+
+  const u = (image || "").trim();
+  if (!u) return "";
+  if (/file\.alapi\.cn/i.test(u)) return "";
+  if (/wsrv\.nl|images\.weserv\.nl/i.test(u)) return "";
+  if (/^data:/i.test(u)) return "";
+  return u;
 }
 
 
@@ -280,6 +264,7 @@ async function main(ctx) {
   const maxNews = envMaxNews(env, "MAX_NEWS", DEFAULT_MAX_NEWS);
   const dedupe = envBool(env, "DEDUPE", false);
   const openMode = getEnv(env, ["OPEN_URL"], "image");
+  const token = getEnv(env, ["TOKEN", "ALAPI_TOKEN", "ALAPI_KEY"], "");
 
   log(
     "开始获取 " +
@@ -322,7 +307,7 @@ async function main(ctx) {
 
     const subtitle = buildSubtitle(lunar, date, dow);
     const body = buildBody(news, tip, maxNews);
-    const openUrl = resolveOpenUrl(openMode, image);
+    const openUrl = resolveOpenUrl(openMode, image, token);
 
     log("数据源: " + (data.source || "unknown"));
     log("标题: " + TITLE_MAIN);
