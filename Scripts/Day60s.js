@@ -1,6 +1,6 @@
 /******************************
 脚本名称: 每日60S
-Version : v1.1.17
+Version : v1.1.18
 更新时间: 2026-07-23
 平台: Egern
 功能: 每日60秒读懂世界（定时通知）
@@ -8,6 +8,7 @@ Version : v1.1.17
 使用说明:
 1. 模块 Rewrite/Day60s.module 或主配置添加 schedule
 2. 默认每天 08:15 推送
+3. OPEN_URL=image 时点击通知打开 viki 海报 https 链接
 环境变量 env:
 - API_URL   默认 https://60s-api.viki.moe/v2/60s
 - MAX_NEWS  新闻条数，默认 4（0=全部）
@@ -18,7 +19,7 @@ Version : v1.1.17
 const SCRIPT_NAME = "每日60S";
 const TITLE_MAIN = "每日60S · 读懂世界 💭";
 const SCRIPT_AUTHOR = "@Nullwhy";
-const SCRIPT_VERSION = "v1.1.17";
+const SCRIPT_VERSION = "v1.1.18";
 const SCRIPT_UPDATED = "2026-07-23";
 const STORE_KEY = "60s_last_date";
 const DEFAULT_API = "https://60s-api.viki.moe/v2/60s";
@@ -30,36 +31,52 @@ function log(msg) {
 }
 
 /**
- * 通知 + 点击跳转
- * 仅使用官方 action.openUrl；不挂 attachment，避免点进 Egern 通知/媒体页。
- * 说明：通知由 Egern 发出，iOS 仍可能短暂激活发送方 App，脚本无法彻底禁止。
+ * 仅用官方 ctx.notify + action.openUrl
+ * url 必须是 http(s)，否则系统会只打开 Egern
  */
 function notifyWithCtx(ctx, title, subtitle, body, openUrl) {
   console.log("📢 " + title + " - " + subtitle + ": " + body);
   if (openUrl) console.log("🔗 " + openUrl);
 
+  const payload = {
+    title: title,
+    subtitle: subtitle,
+    body: body,
+    sound: true
+  };
+
+  if (openUrl && /^https?:\/\//i.test(String(openUrl))) {
+    payload.action = {
+      type: "openUrl",
+      url: String(openUrl)
+    };
+  }
+
   if (ctx && typeof ctx.notify === "function") {
     try {
-      const payload = {
-        title: title,
-        subtitle: subtitle,
-        body: body,
-        sound: true
-      };
-      if (openUrl) {
-        payload.action = { type: "openUrl", url: openUrl };
-      }
       return ctx.notify(payload);
     } catch (e) {
       log("ctx.notify 失败: " + (e && e.message ? e.message : e));
     }
   }
 
-  // 回退：仅发通知，不附带 url（避免错误路由到 App 内通知详情）
+  // 无 ctx.notify 时尽量带 open-url（部分运行时支持）
   if (typeof $notification !== "undefined" && $notification.post) {
     try {
-      $notification.post(title, subtitle, body);
-    } catch (_) {}
+      if (openUrl && /^https?:\/\//i.test(String(openUrl))) {
+        $notification.post(title, subtitle, body, {
+          "open-url": String(openUrl),
+          openUrl: String(openUrl),
+          url: String(openUrl)
+        });
+      } else {
+        $notification.post(title, subtitle, body);
+      }
+    } catch (e1) {
+      try {
+        $notification.post(title, subtitle, body);
+      } catch (_) {}
+    }
   }
 }
 
@@ -101,7 +118,6 @@ function buildBody(news, tip, maxNews) {
   return lines.join("\n") || "暂无新闻";
 }
 
-// 副标题：阳历  星期  ·  阴历
 function buildSubtitle(lunar, date, dow) {
   const left = [];
   if (date) left.push(date);
@@ -113,11 +129,42 @@ function buildSubtitle(lunar, date, dow) {
   return "读懂世界";
 }
 
-// OPEN_URL: image | none
+/** 规范成可打开的 https 图片 URL */
+function normalizeHttpsImageUrl(url) {
+  if (!url) return "";
+  var u = String(url).trim();
+  if (!u) return "";
+  // 协议相对
+  if (u.indexOf("//") === 0) u = "https:" + u;
+  // 缺协议
+  if (!/^https?:\/\//i.test(u)) {
+    if (/^[a-z0-9.-]+\//i.test(u)) u = "https://" + u;
+    else return "";
+  }
+  // 强制 https，减少 ATS/拦截问题
+  u = u.replace(/^http:\/\//i, "https://");
+  // 排除已知不可用跳转
+  if (/file\.alapi\.cn/i.test(u)) return "";
+  if (/wsrv\.nl|images\.weserv\.nl/i.test(u)) return "";
+  if (/^data:/i.test(u)) return "";
+  return u;
+}
+
 function resolveOpenUrl(mode, image) {
   const m = (mode || "image").toLowerCase();
   if (m === "none" || m === "off" || m === "false") return "";
-  return image || "";
+  return normalizeHttpsImageUrl(image);
+}
+
+/** 当日 viki 海报兜底（形如 .../static/images/YYYY-MM-DD.png） */
+function vikiPosterByDate(date) {
+  const d = String(date || "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return "";
+  return (
+    "https://cdn.jsdmirror.com/gh/vikiboss/60s-static-host@main/static/images/" +
+    d +
+    ".png"
+  );
 }
 
 async function fetchNews(ctx, url) {
@@ -212,7 +259,16 @@ async function main(ctx) {
 
     const subtitle = buildSubtitle(lunar, date, dow);
     const body = buildBody(news, tip, maxNews);
-    const openUrl = resolveOpenUrl(openMode, image);
+
+    // 点击目标：优先接口 image，其次按日期拼 viki 海报 CDN
+    var openUrl = "";
+    if (openMode === "image") {
+      openUrl = resolveOpenUrl("image", image);
+      if (!openUrl) {
+        openUrl = resolveOpenUrl("image", vikiPosterByDate(date));
+        if (openUrl) log("使用日期拼装海报: " + openUrl);
+      }
+    }
 
     log("标题: " + TITLE_MAIN);
     log("副标题: " + subtitle);
@@ -225,6 +281,7 @@ async function main(ctx) {
         news.length
     );
     if (openUrl) log("点击跳转: " + openUrl);
+    else if (openMode === "image") log("无可用 https 海报，点击将只打开 Egern");
 
     await notifyWithCtx(ctx, TITLE_MAIN, subtitle, body, openUrl);
 
