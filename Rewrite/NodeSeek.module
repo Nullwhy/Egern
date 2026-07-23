@@ -4,11 +4,11 @@
 #
 # 使用步骤：
 # 1. 安装并启用本模块，确保 MITM 证书已信任
-# 2. 打开「抓包」开关 → 登录 NodeSeek 访问个人相关页面
-# 3. 收到「抓包成功」后，手动关闭「抓包」
+# 2. 打开「Cookie」开关 → 登录 NodeSeek 访问个人相关页面
+# 3. 收到「Cookie 成功」后，手动关闭「Cookie」
 # 4. 定时任务自动签到；也可手动运行「NodeSeek 签到」
 name: "NodeSeek"
-description: "NodeSeek 每日签到（先抓包再定时签到）"
+description: "NodeSeek 每日签到（先保存 Cookie 再定时签到）"
 author: "Nullwhy"
 icon: "https://raw.githubusercontent.com/sooyaaabo/Loon/main/Icon/App-Icon/NodeSeek.png"
 
@@ -27,8 +27,8 @@ env_schema:
     description: 每天签到的小时（0-23），默认 10
     default_value: "10"
   ENABLE_CAPTURE:
-    name: 抓包
-    description: 默认关闭；开启后访问个人页保存请求头，成功后请手动关闭
+    name: Cookie
+    description: 默认关闭；开启后访问个人页保存 Cookie/请求头，成功后请手动关闭
     default_value: "false"
     options:
       - "false"
@@ -40,7 +40,7 @@ mitm:
 
 scriptings:
   - http_response:
-      name: "NodeSeek 抓包"
+      name: "NodeSeek Cookie"
       match: "^https://www\\.nodeseek\\.com/api/account/getInfo/"
       script_url: "https://raw.githubusercontent.com/Nullwhy/Egern/main/Scripts/NodeSeek.js"
       body_required: false
