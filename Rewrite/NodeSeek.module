@@ -1,0 +1,48 @@
+# NodeSeek 每日签到 — Egern 模块
+# 作者: @Nullwhy（脚本适配自 @Curtinp118）
+# 更新: 2026-07-23
+#
+# 使用步骤：
+# 1. 安装并启用本模块，确保 MITM 证书已信任
+# 2. 打开 Safari/App 登录 NodeSeek，访问一次个人相关页面（触发 getInfo 接口）
+# 3. 收到「抓包成功」通知后，定时任务即可自动签到
+# 4. 也可在脚本列表手动运行「NodeSeek 签到」测试
+name: "NodeSeek"
+description: "NodeSeek 每日签到（先抓包再定时签到）"
+author: "Nullwhy"
+icon: "https://raw.githubusercontent.com/sooyaaabo/Loon/main/Icon/App-Icon/NodeSeek.png"
+
+compat_arguments:
+  MINUTE: "0"
+  HOUR: "10"
+
+env_schema:
+  MINUTE:
+    name: 分钟
+    description: 每天签到的分钟（0-59），默认 0
+    default_value: "0"
+  HOUR:
+    name: 小时
+    description: 每天签到的小时（0-23），默认 10
+    default_value: "10"
+
+mitm:
+  hostnames:
+    - www.nodeseek.com
+
+scriptings:
+  # 抓取签到所需请求头（访问 NodeSeek 账号相关接口时触发）
+  - http_response:
+      name: "NodeSeek 抓包"
+      match: "^https://www\\.nodeseek\\.com/api/account/getInfo/"
+      script_url: "https://raw.githubusercontent.com/Nullwhy/Egern/main/Scripts/NodeSeek.js"
+      body_required: false
+      timeout: 30
+      max_size: 1048576
+
+  # 定时签到
+  - schedule:
+      name: "NodeSeek 签到"
+      cron: "{{{MINUTE}}} {{{HOUR}}} * * *"
+      timeout: 60
+      script_url: "https://raw.githubusercontent.com/Nullwhy/Egern/main/Scripts/NodeSeek.js"
