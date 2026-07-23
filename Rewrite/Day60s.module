@@ -1,10 +1,6 @@
 # 每日60S — Egern 模块
-# 格式: Egern 原生模块（YAML 内容，扩展名 .module）
 # 作者: @Nullwhy
 # 更新: 2026-07-23
-#
-# 说明：Egern 的 Toggle 首次添加时 UI 常固定显示为「关」。
-# 因此「同日只推一次」改为反向开关「允许同日多次」（默认关 = 只推一次）。
 name: "每日60S"
 description: "每天定时推送60秒新闻"
 author: "Nullwhy"
@@ -30,11 +26,11 @@ env_schema:
     default_value: "8"
   MAX_NEWS:
     name: 新闻条数
-    description: 单条默认 5；0=全部。开启「多条通知」时会自动用全部新闻拆分（不受 5 限制）
+    description: 单条默认 5；0=全部。开启多条通知时自动用全部新闻拆分
     default_value: "5"
   MULTI_NOTIFY:
     name: 多条通知
-    description: 开启后按「每条通知条数」拆成多条（自动取全部新闻）；默认关闭
+    description: 开启后按「每条通知条数」拆分；默认关闭
     default_value: "false"
     options:
       - "false"
