@@ -8,7 +8,7 @@
 # 3. 收到「Cookie 成功」后，手动关闭「Cookie」
 # 4. 定时任务自动签到；也可手动运行「NodeSeek 签到」
 name: "NodeSeek"
-description: "NodeSeek 每日签到（先保存 Cookie 再定时签到）"
+description: "NS 每日定时签到"
 author: "Nullwhy"
 icon: "https://raw.githubusercontent.com/Nullwhy/Egern/main/Icon/Nullwhy.png"
 
