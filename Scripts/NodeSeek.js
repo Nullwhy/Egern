@@ -1,14 +1,14 @@
 /******************************
 脚本名称: NodeSeek
-Version : v1.0.2
+Version : v1.0.3
 更新时间: 2026-06-17
 平台: Egern
 功能: NodeSeek 每日签到
 脚本作者：
 @Curtinp118      @Nullwhy 适配Egern
 使用说明:
-1. 模块打开「抓包」后访问 NodeSeek 个人页保存请求头
-2. 抓包成功后请关闭「抓包」
+1. 模块打开「Cookie」后访问 NodeSeek 个人页保存请求头
+2. 保存成功后请关闭「Cookie」
 3. 定时/手动运行签到
 *******************************/
 
@@ -46,13 +46,13 @@ async function main(ctx) {
   const isCapture = ctx.request !== undefined;
   
   if (isCapture) {
-    // 抓取请求头模式（需模块打开「抓包」开关）
+    // 保存请求头模式（需模块打开「Cookie」开关）
     const env = (ctx && ctx.env) || {};
     if (!envBool(env, "ENABLE_CAPTURE", false) && !envBool(env, "CAPTURE", false)) {
-      log("抓包开关已关闭，跳过");
+      log("Cookie 开关已关闭，跳过");
       return { response: ctx.response };
     }
-    log("开始抓取请求头");
+    log("开始保存 Cookie/请求头");
     
     const headers = ctx.request.headers || {};
     const needKeys = [
@@ -69,13 +69,13 @@ async function main(ctx) {
     
     if (Object.keys(saved).length === 0) {
       log("❌ 未获取到有效请求头");
-      notify(SCRIPT_NAME, "抓包失败", "未获取到请求头");
+      notify(SCRIPT_NAME, "Cookie 失败", "未获取到请求头");
       return { response: ctx.response };
     }
     
     await ctx.storage.set(STORE_KEY, JSON.stringify(saved));
     log(`✅ 请求头已保存，共 ${Object.keys(saved).length} 个字段`);
-    notify(SCRIPT_NAME, "抓包成功", "请求头已保存，请关闭模块「抓包」开关");
+    notify(SCRIPT_NAME, "Cookie 成功", "请求头已保存，请关闭模块「Cookie」开关");
     
     return { response: ctx.response };
     
@@ -85,8 +85,8 @@ async function main(ctx) {
     
     const raw = await ctx.storage.get(STORE_KEY);
     if (!raw) {
-      log("❌ 未找到请求头，请先访问 NodeSeek 个人页面抓包");
-      notify(SCRIPT_NAME, "缺少请求头", "请先访问个人页面抓包");
+      log("❌ 未找到请求头，请先打开「Cookie」并访问 NodeSeek 个人页面");
+      notify(SCRIPT_NAME, "缺少请求头", "请先打开 Cookie 并访问个人页面");
       return;
     }
     
@@ -95,7 +95,7 @@ async function main(ctx) {
       savedHeaders = JSON.parse(raw);
     } catch (e) {
       log("❌ 请求头解析失败");
-      notify(SCRIPT_NAME, "数据异常", "请重新抓包");
+      notify(SCRIPT_NAME, "数据异常", "请重新打开 Cookie 并访问个人页面");
       return;
     }
     
