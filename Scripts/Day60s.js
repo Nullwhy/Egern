@@ -1,6 +1,6 @@
 /******************************
 脚本名称: 每日60S
-Version : v1.1.15
+Version : v1.1.16
 更新时间: 2026-07-23
 平台: Egern
 功能: 每日60秒读懂世界（定时通知）
@@ -18,7 +18,7 @@ Version : v1.1.15
 const SCRIPT_NAME = "每日60S";
 const TITLE_MAIN = "每日60S · 读懂世界 💭";
 const SCRIPT_AUTHOR = "@Nullwhy";
-const SCRIPT_VERSION = "v1.1.15";
+const SCRIPT_VERSION = "v1.1.16";
 const SCRIPT_UPDATED = "2026-07-23";
 const STORE_KEY = "60s_last_date";
 const DEFAULT_API = "https://60s-api.viki.moe/v2/60s";
@@ -29,43 +29,54 @@ function log(msg) {
   console.log("[" + SCRIPT_NAME + "] " + msg);
 }
 
-/** 通知 + 点击跳转（Options.url / Open Link） */
+/**
+ * 通知 + 点击跳转
+ * 官方 API：ctx.notify + action.type=openUrl（点击直接打开 URL，避免先进入 Egern）
+ * 文档：https://egernapp.com/zh-CN/docs/javascript-api/
+ */
 function notifyWithCtx(ctx, title, subtitle, body, openUrl) {
   console.log("📢 " + title + " - " + subtitle + ": " + body);
   if (openUrl) console.log("🔗 " + openUrl);
 
-  if (typeof $notification !== "undefined" && $notification.post) {
-    try {
-      if (openUrl) {
-        $notification.post(title, subtitle, body, { url: openUrl });
-      } else {
-        $notification.post(title, subtitle, body);
-      }
-      return;
-    } catch (e1) {
-      try {
-        if (openUrl) {
-          $notification.post(title, subtitle, body, openUrl);
-        } else {
-          $notification.post(title, subtitle, body);
-        }
-        return;
-      } catch (e2) {
-        try {
-          $notification.post(title, subtitle, body);
-          return;
-        } catch (_) {}
-      }
-    }
-  }
-
+  // 1) 优先官方 ctx.notify + action.openUrl
   if (ctx && typeof ctx.notify === "function") {
     try {
-      const payload = { title: title, subtitle: subtitle, body: body };
-      if (openUrl) payload.url = openUrl;
+      const payload = {
+        title: title,
+        subtitle: subtitle,
+        body: body,
+        sound: true
+      };
+      // 海报作通知附件（可选，便于预览）
+      if (openUrl && /\.(png|jpe?g|gif|webp)(\?|$)/i.test(openUrl)) {
+        payload.attachment = { url: openUrl };
+      }
+      if (openUrl) {
+        payload.action = { type: "openUrl", url: openUrl };
+      }
       return ctx.notify(payload);
     } catch (e) {
       log("ctx.notify 失败: " + (e && e.message ? e.message : e));
+    }
+  }
+
+  // 2) 回退 $notification（部分环境无 ctx.notify）
+  if (typeof $notification !== "undefined" && $notification.post) {
+    try {
+      if (openUrl) {
+        // 尽量用 open-url 字段，减少先打开 App 的概率（视运行时支持）
+        $notification.post(title, subtitle, body, {
+          url: openUrl,
+          "open-url": openUrl,
+          openUrl: openUrl
+        });
+      } else {
+        $notification.post(title, subtitle, body);
+      }
+    } catch (e1) {
+      try {
+        $notification.post(title, subtitle, body);
+      } catch (_) {}
     }
   }
 }
