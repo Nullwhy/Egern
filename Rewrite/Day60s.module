@@ -30,11 +30,11 @@ env_schema:
     default_value: "8"
   MAX_NEWS:
     name: 新闻条数
-    description: 单条通知默认 5；0=全部；多条通知开启时建议 0
+    description: 单条默认 5；0=全部。开启「多条通知」时会自动用全部新闻拆分（不受 5 限制）
     default_value: "5"
   MULTI_NOTIFY:
     name: 多条通知
-    description: 开启后拆成多条通知以显示更多新闻；默认关闭
+    description: 开启后按「每条通知条数」拆成多条（自动取全部新闻）；默认关闭
     default_value: "false"
     options:
       - "false"
