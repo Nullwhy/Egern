@@ -1,12 +1,6 @@
-# NodeSeek 每日签到 — Egern 模块
-# 作者: @Nullwhy（脚本适配自 @Curtinp118）
-# 更新: 2026-07-23
-#
-# 使用步骤：
-# 1. 安装并启用本模块，确保 MITM 证书已信任
-# 2. 打开「Cookie」开关 → 登录 NodeSeek 访问个人相关页面
-# 3. 收到「Cookie 成功」后，手动关闭「Cookie」
-# 4. 定时任务自动签到；也可手动运行「NodeSeek 签到」
+# NodeSeek — Egern 模块
+# 1. 开 Cookie → 访问个人页 → 成功后关 Cookie
+# 2. 定时签到（默认可改）
 name: "NodeSeek"
 description: "NS 每日定时签到"
 author: "Nullwhy"
