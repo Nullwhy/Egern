@@ -10,7 +10,7 @@
 name: "NodeSeek"
 description: "NodeSeek 每日签到（先保存 Cookie 再定时签到）"
 author: "Nullwhy"
-icon: "https://raw.githubusercontent.com/sooyaaabo/Loon/main/Icon/App-Icon/NodeSeek.png"
+icon: "https://raw.githubusercontent.com/Nullwhy/Egern/main/Icon/Nullwhy.png"
 
 compat_arguments:
   MINUTE: "0"
