@@ -215,7 +215,6 @@ function buildAlapiUrl(token) {
 }
 
 async function loadNews(ctx, env) {
-  const token = getEnv(env, ["TOKEN", "ALAPI_TOKEN", "ALAPI_KEY"], "");
   const customUrl = getEnv(env, ["API_URL"], "");
 
   // 1) 用户自定义完整 URL（可自带 token 查询参数）
