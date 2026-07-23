@@ -1,6 +1,6 @@
 /******************************
 脚本名称: 每日60S
-Version : v1.1.24
+Version : v1.1.25
 更新时间: 2026-07-23
 平台: Egern
 功能: 每日60秒读懂世界（定时通知）
@@ -22,7 +22,7 @@ Version : v1.1.24
 const SCRIPT_NAME = "每日60S";
 const TITLE_MAIN = "每日60S · 读懂世界 💭";
 const SCRIPT_AUTHOR = "@Nullwhy";
-const SCRIPT_VERSION = "v1.1.24";
+const SCRIPT_VERSION = "v1.1.25";
 const SCRIPT_UPDATED = "2026-07-23";
 const STORE_KEY = "60s_last_date";
 const DEFAULT_API = "https://60s-api.viki.moe/v2/60s";
@@ -250,6 +250,7 @@ async function main(ctx) {
   const dedupe = resolveDedupe(env);
   const openMode = getEnv(env, ["OPEN_URL"], "image");
 
+  log("MULTI_NOTIFY=" + getEnv(env, ["MULTI_NOTIFY"], "") + " multi=" + multiNotify);
   log(
     "开始获取 " +
       SCRIPT_NAME +
@@ -271,7 +272,24 @@ async function main(ctx) {
     const dow = data.day_of_week || "";
     const lunar = data.lunar_date || "";
 
-    if (maxNews > 0) news = news.slice(0, maxNews);
+    // 多条通知：默认用全部新闻再拆分。
+    // 若仍用 MAX_NEWS=5 且 CHUNK_SIZE=5，会只剩 1 组，看起来像开关无效。
+    if (multiNotify) {
+      if (maxNews > 0 && maxNews > chunkSize) {
+        news = news.slice(0, maxNews);
+      } else if (maxNews > 0 && maxNews <= chunkSize) {
+        log(
+          "多条通知已开启：忽略新闻条数上限 " +
+            maxNews +
+            "（≤每条 " +
+            chunkSize +
+            "），改为全部新闻再拆分"
+        );
+      }
+      // maxNews===0 → 全部
+    } else if (maxNews > 0) {
+      news = news.slice(0, maxNews);
+    }
 
     if (dedupe && date) {
       try {
