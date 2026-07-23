@@ -1,6 +1,6 @@
 /******************************
 脚本名称: 每日60S
-Version : v1.1.21
+Version : v1.1.22
 更新时间: 2026-07-23
 平台: Egern
 功能: 每日60秒读懂世界（定时通知）
@@ -11,22 +11,22 @@ Version : v1.1.21
 3. OPEN_URL 默认 none
 环境变量 env:
 - API_URL      默认 https://60s-api.viki.moe/v2/60s
-- MAX_NEWS     最多条数，0=全部（默认 0）
+- MAX_NEWS     单条默认 5；0=全部（多条通知开启时建议 0）
 - MULTI_NOTIFY true=多条通知，false=单条（默认 false）
-- CHUNK_SIZE   多条模式下每条通知新闻数，默认 5
-- OPEN_URL     image | none，默认 none
-- DEDUPE       true/false，默认 false
+- CHUNK_SIZE   多条模式下每条条数，默认 5
+- OPEN_URL     image=打开海报 | none=不跳转（默认 image）
+- DEDUPE       同日只推一次，默认 true
 *******************************/
 
 const SCRIPT_NAME = "每日60S";
 const TITLE_MAIN = "每日60S · 读懂世界 💭";
 const SCRIPT_AUTHOR = "@Nullwhy";
-const SCRIPT_VERSION = "v1.1.21";
+const SCRIPT_VERSION = "v1.1.22";
 const SCRIPT_UPDATED = "2026-07-23";
 const STORE_KEY = "60s_last_date";
 const DEFAULT_API = "https://60s-api.viki.moe/v2/60s";
 const FALLBACK_APIS = ["https://60s.viki.moe/v2/60s"];
-const DEFAULT_MAX_NEWS = 0;
+const DEFAULT_MAX_NEWS = 5;
 const DEFAULT_CHUNK_SIZE = 5;
 
 function log(msg) {
@@ -217,8 +217,8 @@ async function main(ctx) {
   const maxNews = envInt(env, "MAX_NEWS", DEFAULT_MAX_NEWS);
   const multiNotify = envBool(env, "MULTI_NOTIFY", false);
   const chunkSize = Math.max(1, envInt(env, "CHUNK_SIZE", DEFAULT_CHUNK_SIZE));
-  const dedupe = envBool(env, "DEDUPE", false);
-  const openMode = getEnv(env, ["OPEN_URL"], "none");
+  const dedupe = envBool(env, "DEDUPE", true);
+  const openMode = getEnv(env, ["OPEN_URL"], "image");
 
   log(
     "开始获取 " +
