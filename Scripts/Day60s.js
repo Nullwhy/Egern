@@ -1,6 +1,6 @@
 /******************************
 脚本名称: 每日60S
-Version : v1.1.22
+Version : v1.1.23
 更新时间: 2026-07-23
 平台: Egern
 功能: 每日60秒读懂世界（定时通知）
@@ -21,7 +21,7 @@ Version : v1.1.22
 const SCRIPT_NAME = "每日60S";
 const TITLE_MAIN = "每日60S · 读懂世界 💭";
 const SCRIPT_AUTHOR = "@Nullwhy";
-const SCRIPT_VERSION = "v1.1.22";
+const SCRIPT_VERSION = "v1.1.23";
 const SCRIPT_UPDATED = "2026-07-23";
 const STORE_KEY = "60s_last_date";
 const DEFAULT_API = "https://60s-api.viki.moe/v2/60s";
@@ -80,8 +80,14 @@ function getEnv(env, names, fallback) {
 }
 
 function envBool(env, key, def) {
-  const v = getEnv(env, [key], def ? "true" : "false").toLowerCase();
-  return ["0", "false", "no", "off"].indexOf(v) === -1;
+  // 未设置或空字符串时用 def（首次添加模块时 Toggle 可能未写入 env）
+  if (!env || env[key] === undefined || env[key] === null || String(env[key]).trim() === "") {
+    return !!def;
+  }
+  const v = String(env[key]).trim().toLowerCase();
+  if (["1", "true", "yes", "on", "开启"].indexOf(v) !== -1) return true;
+  if (["0", "false", "no", "off", "关闭"].indexOf(v) !== -1) return false;
+  return !!def;
 }
 
 function envInt(env, key, def) {
