@@ -1,39 +1,38 @@
 /******************************
 脚本名称: 每日60S
-Version : v1.1.19
+Version : v1.1.20
 更新时间: 2026-07-23
 平台: Egern
 功能: 每日60秒读懂世界（定时通知）
 脚本作者: @Nullwhy
 使用说明:
-1. 模块 Rewrite/Day60s.module 或主配置添加 schedule
-2. 默认每天 08:15 推送
-3. 默认通知正文展示全部新闻+微语；OPEN_URL 默认 none
+1. 模块 Rewrite/Day60s.module
+2. 默认通知内展示全部新闻：因 iOS 单条正文约只能完整显示 ~5–6 条，
+   将自动拆成多条通知（如 1/3、2/3、3/3）
+3. OPEN_URL 默认 none，减少点击打开 Egern
 环境变量 env:
-- API_URL   默认 https://60s-api.viki.moe/v2/60s
-- MAX_NEWS  新闻条数，默认 0=全部（通知内看全文，不依赖浏览器）
-- OPEN_URL  image | none，默认 none（不点开链接，减少打开 Egern）
-- DEDUPE    true/false，同日只推一次，默认 false
+- API_URL    默认 https://60s-api.viki.moe/v2/60s
+- MAX_NEWS   最多条数，0=全部（默认 0）
+- CHUNK_SIZE 每条通知新闻数，默认 5（适配系统通知长度）
+- OPEN_URL   image | none，默认 none
+- DEDUPE     true/false，默认 false
 *******************************/
 
 const SCRIPT_NAME = "每日60S";
 const TITLE_MAIN = "每日60S · 读懂世界 💭";
 const SCRIPT_AUTHOR = "@Nullwhy";
-const SCRIPT_VERSION = "v1.1.19";
+const SCRIPT_VERSION = "v1.1.20";
 const SCRIPT_UPDATED = "2026-07-23";
 const STORE_KEY = "60s_last_date";
 const DEFAULT_API = "https://60s-api.viki.moe/v2/60s";
 const FALLBACK_APIS = ["https://60s.viki.moe/v2/60s"];
 const DEFAULT_MAX_NEWS = 0;
+const DEFAULT_CHUNK_SIZE = 5;
 
 function log(msg) {
   console.log("[" + SCRIPT_NAME + "] " + msg);
 }
 
-/**
- * 仅用官方 ctx.notify + action.openUrl
- * url 必须是 http(s)，否则系统会只打开 Egern
- */
 function notifyWithCtx(ctx, title, subtitle, body, openUrl) {
   console.log("📢 " + title + " - " + subtitle + ": " + body);
   if (openUrl) console.log("🔗 " + openUrl);
@@ -44,12 +43,8 @@ function notifyWithCtx(ctx, title, subtitle, body, openUrl) {
     body: body,
     sound: true
   };
-
   if (openUrl && /^https?:\/\//i.test(String(openUrl))) {
-    payload.action = {
-      type: "openUrl",
-      url: String(openUrl)
-    };
+    payload.action = { type: "openUrl", url: String(openUrl) };
   }
 
   if (ctx && typeof ctx.notify === "function") {
@@ -60,24 +55,17 @@ function notifyWithCtx(ctx, title, subtitle, body, openUrl) {
     }
   }
 
-  // 无 ctx.notify 时尽量带 open-url（部分运行时支持）
   if (typeof $notification !== "undefined" && $notification.post) {
     try {
-      if (openUrl && /^https?:\/\//i.test(String(openUrl))) {
-        $notification.post(title, subtitle, body, {
-          "open-url": String(openUrl),
-          openUrl: String(openUrl),
-          url: String(openUrl)
-        });
-      } else {
-        $notification.post(title, subtitle, body);
-      }
-    } catch (e1) {
-      try {
-        $notification.post(title, subtitle, body);
-      } catch (_) {}
-    }
+      $notification.post(title, subtitle, body);
+    } catch (_) {}
   }
+}
+
+function sleep(ms) {
+  return new Promise(function (resolve) {
+    setTimeout(resolve, ms);
+  });
 }
 
 function getEnv(env, names, fallback) {
@@ -96,7 +84,7 @@ function envBool(env, key, def) {
   return ["0", "false", "no", "off"].indexOf(v) === -1;
 }
 
-function envMaxNews(env, key, def) {
+function envInt(env, key, def) {
   const n = parseInt(getEnv(env, [key], String(def)), 10);
   return Number.isFinite(n) ? n : def;
 }
@@ -107,23 +95,33 @@ function stripLeadingIndex(text) {
     .trim();
 }
 
-function buildBody(news, tip, maxNews) {
-  // maxNews<=0：全部新闻，尽量在通知正文看完，不依赖浏览器
-  const all = Array.isArray(news) ? news : [];
-  const list = maxNews > 0 ? all.slice(0, maxNews) : all.slice();
-  const lines = list.map(function (item, i) {
+function chunkArray(arr, size) {
+  const out = [];
+  const s = size > 0 ? size : arr.length || 1;
+  for (let i = 0; i < arr.length; i += s) {
+    out.push(arr.slice(i, i + s));
+  }
+  return out.length ? out : [[]];
+}
+
+function buildBodyChunk(newsChunk, startIndex, tip) {
+  const lines = (newsChunk || []).map(function (item, i) {
     var s =
       typeof item === "string"
         ? item
         : (item && (item.title || item.text)) || String(item);
     s = stripLeadingIndex(s);
-    return i + 1 + ". " + s;
+    return startIndex + i + 1 + ". " + s;
   });
   if (tip) {
     lines.push("");
-    lines.push("【微语】" + String(tip).replace(/^\s*【\s*微语\s*】\s*/u, "").trim());
+    lines.push(
+      "【微语】" +
+        String(tip)
+          .replace(/^\s*【\s*微语\s*】\s*/u, "")
+          .trim()
+    );
   }
-  // 不截断：完整正文交给系统通知（展开后可见；锁屏可能仍折叠）
   return lines.join("\n") || "暂无新闻";
 }
 
@@ -138,21 +136,16 @@ function buildSubtitle(lunar, date, dow) {
   return "读懂世界";
 }
 
-/** 规范成可打开的 https 图片 URL */
 function normalizeHttpsImageUrl(url) {
   if (!url) return "";
   var u = String(url).trim();
   if (!u) return "";
-  // 协议相对
   if (u.indexOf("//") === 0) u = "https:" + u;
-  // 缺协议
   if (!/^https?:\/\//i.test(u)) {
     if (/^[a-z0-9.-]+\//i.test(u)) u = "https://" + u;
     else return "";
   }
-  // 强制 https，减少 ATS/拦截问题
   u = u.replace(/^http:\/\//i, "https://");
-  // 排除已知不可用跳转
   if (/file\.alapi\.cn/i.test(u)) return "";
   if (/wsrv\.nl|images\.weserv\.nl/i.test(u)) return "";
   if (/^data:/i.test(u)) return "";
@@ -160,12 +153,11 @@ function normalizeHttpsImageUrl(url) {
 }
 
 function resolveOpenUrl(mode, image) {
-  const m = (mode || "image").toLowerCase();
+  const m = (mode || "none").toLowerCase();
   if (m === "none" || m === "off" || m === "false") return "";
   return normalizeHttpsImageUrl(image);
 }
 
-/** 当日 viki 海报兜底（形如 .../static/images/YYYY-MM-DD.png） */
 function vikiPosterByDate(date) {
   const d = String(date || "").trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return "";
@@ -222,7 +214,8 @@ async function load60s(ctx, apiUrl) {
 async function main(ctx) {
   const env = (ctx && ctx.env) || {};
   const apiUrl = getEnv(env, ["API_URL"], DEFAULT_API);
-  const maxNews = envMaxNews(env, "MAX_NEWS", DEFAULT_MAX_NEWS);
+  const maxNews = envInt(env, "MAX_NEWS", DEFAULT_MAX_NEWS);
+  const chunkSize = Math.max(1, envInt(env, "CHUNK_SIZE", DEFAULT_CHUNK_SIZE));
   const dedupe = envBool(env, "DEDUPE", false);
   const openMode = getEnv(env, ["OPEN_URL"], "none");
 
@@ -241,11 +234,13 @@ async function main(ctx) {
     const json = await load60s(ctx, apiUrl);
     const data = json.data || {};
     const date = data.date || "";
-    const news = data.news || [];
+    var news = data.news || [];
     const tip = data.tip || "";
     const image = data.image || data.cover || "";
     const dow = data.day_of_week || "";
     const lunar = data.lunar_date || "";
+
+    if (maxNews > 0) news = news.slice(0, maxNews);
 
     if (dedupe && date) {
       try {
@@ -267,32 +262,43 @@ async function main(ctx) {
     }
 
     const subtitle = buildSubtitle(lunar, date, dow);
-    const body = buildBody(news, tip, maxNews);
 
-    // 点击目标：优先接口 image，其次按日期拼 viki 海报 CDN
     var openUrl = "";
     if (openMode === "image") {
       openUrl = resolveOpenUrl("image", image);
-      if (!openUrl) {
-        openUrl = resolveOpenUrl("image", vikiPosterByDate(date));
-        if (openUrl) log("使用日期拼装海报: " + openUrl);
-      }
+      if (!openUrl) openUrl = resolveOpenUrl("image", vikiPosterByDate(date));
     }
 
-    log("标题: " + TITLE_MAIN);
-    log("副标题: " + subtitle);
+    // iOS 单条通知正文大约只能完整显示 ~5–6 条长新闻 → 拆成多条
+    const chunks = chunkArray(news, chunkSize);
+    const total = chunks.length;
     log(
-      "日期: " +
-        date +
-        " 展示: " +
-        (maxNews > 0 ? Math.min(maxNews, news.length) : news.length) +
-        "/" +
-        news.length
+      "新闻 " +
+        news.length +
+        " 条，拆成 " +
+        total +
+        " 条通知（每条 " +
+        chunkSize +
+        " 条）"
     );
-    if (openUrl) log("点击跳转: " + openUrl);
-    else if (openMode === "image") log("无可用 https 海报，点击将只打开 Egern");
 
-    await notifyWithCtx(ctx, TITLE_MAIN, subtitle, body, openUrl);
+    for (var i = 0; i < total; i++) {
+      const startIndex = i * chunkSize;
+      const isLast = i === total - 1;
+      const partBody = buildBodyChunk(
+        chunks[i],
+        startIndex,
+        isLast ? tip : ""
+      );
+      const partTitle =
+        total > 1 ? TITLE_MAIN + " (" + (i + 1) + "/" + total + ")" : TITLE_MAIN;
+      // 仅最后一条带点击跳转（若开启），避免多条都跳转
+      const partOpen = isLast ? openUrl : "";
+
+      log("发送通知 " + (i + 1) + "/" + total);
+      await notifyWithCtx(ctx, partTitle, subtitle, partBody, partOpen);
+      if (!isLast) await sleep(500);
+    }
 
     if (dedupe && date) {
       try {
