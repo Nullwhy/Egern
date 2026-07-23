@@ -1,6 +1,6 @@
 /******************************
 脚本名称: 每日60S
-Version : v1.1.23
+Version : v1.1.24
 更新时间: 2026-07-23
 平台: Egern
 功能: 每日60秒读懂世界（定时通知）
@@ -15,13 +15,14 @@ Version : v1.1.23
 - MULTI_NOTIFY true=多条通知，false=单条（默认 false）
 - CHUNK_SIZE   多条模式下每条条数，默认 5
 - OPEN_URL     image=打开海报 | none=不跳转（默认 image）
-- DEDUPE       同日只推一次，默认 true
+- ALLOW_REPEAT 允许同日多次，默认 false（即同日只推一次）
+- DEDUPE       兼容旧参数；不填则默认只推一次
 *******************************/
 
 const SCRIPT_NAME = "每日60S";
 const TITLE_MAIN = "每日60S · 读懂世界 💭";
 const SCRIPT_AUTHOR = "@Nullwhy";
-const SCRIPT_VERSION = "v1.1.23";
+const SCRIPT_VERSION = "v1.1.24";
 const SCRIPT_UPDATED = "2026-07-23";
 const STORE_KEY = "60s_last_date";
 const DEFAULT_API = "https://60s-api.viki.moe/v2/60s";
@@ -89,6 +90,29 @@ function envBool(env, key, def) {
   if (["0", "false", "no", "off", "关闭"].indexOf(v) !== -1) return false;
   return !!def;
 }
+
+/**
+ * 同日只推一次：默认 true
+ * 模块 UI 使用「允许同日多次」ALLOW_REPEAT（Toggle 默认关 = 不允许多次 = 只推一次）
+ * 兼容旧参数 DEDUPE
+ */
+function resolveDedupe(env) {
+  env = env || {};
+  // 显式 DEDUPE 优先（含空则走默认）
+  if (env.DEDUPE !== undefined && env.DEDUPE !== null && String(env.DEDUPE).trim() !== "") {
+    return envBool(env, "DEDUPE", true);
+  }
+  // 允许同日多次：默认 false → 同日只推一次
+  if (
+    env.ALLOW_REPEAT !== undefined &&
+    env.ALLOW_REPEAT !== null &&
+    String(env.ALLOW_REPEAT).trim() !== ""
+  ) {
+    return !envBool(env, "ALLOW_REPEAT", false);
+  }
+  return true;
+}
+
 
 function envInt(env, key, def) {
   const n = parseInt(getEnv(env, [key], String(def)), 10);
@@ -223,7 +247,7 @@ async function main(ctx) {
   const maxNews = envInt(env, "MAX_NEWS", DEFAULT_MAX_NEWS);
   const multiNotify = envBool(env, "MULTI_NOTIFY", false);
   const chunkSize = Math.max(1, envInt(env, "CHUNK_SIZE", DEFAULT_CHUNK_SIZE));
-  const dedupe = envBool(env, "DEDUPE", true);
+  const dedupe = resolveDedupe(env);
   const openMode = getEnv(env, ["OPEN_URL"], "image");
 
   log(
