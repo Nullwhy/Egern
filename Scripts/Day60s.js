@@ -1,6 +1,6 @@
 /******************************
 脚本名称: 每日60S
-Version : v1.2.2
+Version : v1.2.3
 更新时间: 2026-07-23
 平台: Egern
 功能: 每日60秒读懂世界（定时通知）
@@ -19,7 +19,7 @@ Version : v1.2.2
 const SCRIPT_NAME = "每日60S";
 const TITLE_MAIN = "每日60S · 读懂世界 💭";
 const SCRIPT_AUTHOR = "@Nullwhy";
-const SCRIPT_VERSION = "v1.2.2";
+const SCRIPT_VERSION = "v1.2.3";
 const SCRIPT_UPDATED = "2026-07-23";
 const STORE_KEY = "60s_last_date";
 const DEFAULT_API = "https://60s-api.viki.moe/v2/60s";
@@ -131,28 +131,49 @@ function buildSubtitle(lunar, date, dow) {
 }
 
 /** ALAPI 等图床直链常强制下载，包一层图片代理便于浏览器内预览 */
-function toPreviewableImageUrl(url) {
+/** 将图片做成 HTML 预览页，避免 file.alapi.cn 直链弹下载 / 外站代理 403 */
+function toImagePreviewOpenUrl(url) {
   if (!url) return "";
   const u = String(url).trim();
   if (!u) return "";
-  // 已是代理地址则不再包
-  if (/wsrv\.nl|images\.weserv\.nl/i.test(u)) return u;
-  // file.alapi.cn 或带 attachment 的链：用 wsrv 代理，Safari 通常直接显示图
-  if (/file\.alapi\.cn/i.test(u) || /[?&](download|attachment)=/i.test(u)) {
-    return "https://wsrv.nl/?url=" + encodeURIComponent(u) + "&output=png";
+  // 已是 data HTML 则原样返回
+  if (/^data:text\/html/i.test(u)) return u;
+
+  // 非 ALAPI 强制下载图床：可直接打开
+  const needHtmlShell =
+    /file\.alapi\.cn/i.test(u) || /[?&](download|attachment)=/i.test(u);
+
+  if (!needHtmlShell) {
+    return u;
   }
-  return u;
+
+  // 用 data:text/html 内嵌 <img>，Safari 一般按网页显示而不是「下载文件」
+  // 注意：部分环境对 data URL 长度/策略有限制；失败时回退原链
+  const safe = u.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+  const html =
+    "<!DOCTYPE html><html><head><meta charset=\\\"utf-8\\\">" +
+    "<meta name=\\\"viewport\\\" content=\\\"width=device-width,initial-scale=1\\\">" +
+    "<title>每日60S</title>" +
+    "<style>html,body{margin:0;padding:0;background:#0b0b0b;min-height:100%;}" +
+    "img{display:block;width:100%;height:auto;margin:0 auto}</style></head>" +
+    "<body><img src=\\\"" +
+    safe +
+    "\\\" alt=\\\"60s\\\"/></body></html>";
+
+  try {
+    return "data:text/html;charset=utf-8," + encodeURIComponent(html);
+  } catch (e) {
+    return u;
+  }
 }
 
 function resolveOpenUrl(mode, image) {
   const m = (mode || "image").toLowerCase();
   if (m === "none" || m === "off" || m === "false") return "";
-  // image：始终尝试给出可打开的预览 URL（避免 openUrl 为空时点进 Egern 脚本记录）
-  if (m === "image") {
-    return toPreviewableImageUrl(image);
-  }
-  return toPreviewableImageUrl(image);
+  // image：始终给可点的 URL，避免空 action 掉进 Egern 脚本记录
+  return toImagePreviewOpenUrl(image);
 }
+
 
 
 
