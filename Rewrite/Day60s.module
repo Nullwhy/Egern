@@ -13,8 +13,6 @@ compat_arguments:
   MAX_NEWS: "4"
   OPEN_URL: "image"
   DEDUPE: "false"
-  TOKEN: ""
-
 env_schema:
   MINUTE:
     name: 分钟
@@ -40,10 +38,6 @@ env_schema:
     options:
       - "true"
       - "false"
-  TOKEN:
-    name: ALAPI Token
-    description: 在 alapi.cn 控制台申请「每日早报」后填写；留空则用免费接口
-    default_value: ""
 
 scriptings:
   - schedule:
@@ -55,4 +49,3 @@ scriptings:
         MAX_NEWS: "{{{MAX_NEWS}}}"
         OPEN_URL: "{{{OPEN_URL}}}"
         DEDUPE: "{{{DEDUPE}}}"
-        TOKEN: "{{{TOKEN}}}"
