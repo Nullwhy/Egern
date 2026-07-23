@@ -1,12 +1,12 @@
 /******************************
 脚本名称: 每日60S
-Version : v1.1.14
+Version : v1.1.15
 更新时间: 2026-07-23
 平台: Egern
 功能: 每日60秒读懂世界（定时通知）
 脚本作者: @Nullwhy
 使用说明:
-1. 模块 Rewrite/Day60s.yaml 或主配置添加 schedule
+1. 模块 Rewrite/Day60s.module 或主配置添加 schedule
 2. 默认每天 08:15 推送
 环境变量 env:
 - API_URL   默认 https://60s-api.viki.moe/v2/60s
@@ -18,7 +18,7 @@ Version : v1.1.14
 const SCRIPT_NAME = "每日60S";
 const TITLE_MAIN = "每日60S · 读懂世界 💭";
 const SCRIPT_AUTHOR = "@Nullwhy";
-const SCRIPT_VERSION = "v1.1.14";
+const SCRIPT_VERSION = "v1.1.15";
 const SCRIPT_UPDATED = "2026-07-23";
 const STORE_KEY = "60s_last_date";
 const DEFAULT_API = "https://60s-api.viki.moe/v2/60s";
