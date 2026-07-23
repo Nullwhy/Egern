@@ -1,6 +1,6 @@
 /******************************
 脚本名称: 每日60S
-Version : v1.2.0
+Version : v1.2.1
 更新时间: 2026-07-23
 平台: Egern
 功能: 每日60秒读懂世界（定时通知）
@@ -19,7 +19,7 @@ Version : v1.2.0
 const SCRIPT_NAME = "每日60S";
 const TITLE_MAIN = "每日60S · 读懂世界 💭";
 const SCRIPT_AUTHOR = "@Nullwhy";
-const SCRIPT_VERSION = "v1.2.0";
+const SCRIPT_VERSION = "v1.2.1";
 const SCRIPT_UPDATED = "2026-07-23";
 const STORE_KEY = "60s_last_date";
 const DEFAULT_API = "https://60s-api.viki.moe/v2/60s";
@@ -84,19 +84,37 @@ function envMaxNews(env, key, def) {
   return Number.isFinite(n) ? n : def;
 }
 
+/** 去掉接口自带的序号：1、 1. 1． 等 */
+function stripLeadingIndex(text) {
+  return String(text || "")
+    .replace(/^\s*\d+\s*[\.．、:：]\s*/u, "")
+    .replace(/^\s*[\.．、]\s*/u, "")
+    .trim();
+}
+
+/** 去掉重复的【微语】前缀 */
+function stripWeiyuPrefix(text) {
+  return String(text || "")
+    .replace(/^\s*【\s*微语\s*】\s*/u, "")
+    .replace(/^\s*微语\s*[:：]\s*/u, "")
+    .trim();
+}
+
 function buildBody(news, tip, maxNews) {
   const all = Array.isArray(news) ? news : [];
   const list = maxNews > 0 ? all.slice(0, maxNews) : all.slice();
   const lines = list.map(function (item, i) {
-    const t =
+    let t =
       typeof item === "string"
         ? item
         : (item && (item.title || item.text)) || String(item);
+    t = stripLeadingIndex(t);
     return i + 1 + ". " + t;
   });
-  if (tip) {
+  const tipClean = stripWeiyuPrefix(tip);
+  if (tipClean) {
     lines.push("");
-    lines.push("【微语】" + tip);
+    lines.push("【微语】" + tipClean);
   }
   return lines.join("\n") || "暂无新闻";
 }
@@ -112,11 +130,27 @@ function buildSubtitle(lunar, date, dow) {
   return "读懂世界";
 }
 
-function resolveOpenUrl(mode, image) {
+function isDirectDownloadImage(url) {
+  if (!url) return false;
+  const u = String(url);
+  // ALAPI 图床常带 Content-Disposition: attachment，Safari 会弹「下载」而不是预览
+  if (/file\.alapi\.cn/i.test(u)) return true;
+  if (/[?&](download|attachment)=/i.test(u)) return true;
+  return false;
+}
+
+function resolveOpenUrl(mode, image, link) {
   const m = (mode || "image").toLowerCase();
   if (m === "none" || m === "off" || m === "false") return "";
+  // image：优先可预览的图；ALAPI file.alapi.cn 易触发下载，改为不设置点击（避免下载框）
+  if (m === "image") {
+    if (image && !isDirectDownloadImage(image)) return image;
+    // 无合适预览图时不打开（比弹下载更好）
+    return "";
+  }
   return image || "";
 }
+
 
 /** 统一不同接口字段 → { date, news, tip, image, dow, lunar } */
 function normalizePayload(json, source) {
@@ -126,14 +160,16 @@ function normalizePayload(json, source) {
   if (typeof news === "string") {
     news = news.split(/\n+/).filter(Boolean);
   }
-  const tip = data.tip || data.weiyu || data.wei_yu || "";
+  const tip = stripWeiyuPrefix(data.tip || data.weiyu || data.wei_yu || "");
   const image = data.image || data.head_image || data.cover || data.headImage || "";
   const date = data.date || data.today || "";
   const dow = data.day_of_week || data.week || "";
   const lunar = data.lunar_date || data.lunar || "";
   return {
     date: date,
-    news: Array.isArray(news) ? news : [],
+    news: (Array.isArray(news) ? news : []).map(function (x) {
+    return typeof x === "string" ? stripLeadingIndex(x) : x;
+  }),
     tip: tip,
     image: image,
     dow: dow,
