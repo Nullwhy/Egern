@@ -1,6 +1,6 @@
 /******************************
 脚本名称: 每日60S
-Version : v1.2.1
+Version : v1.2.2
 更新时间: 2026-07-23
 平台: Egern
 功能: 每日60秒读懂世界（定时通知）
@@ -19,7 +19,7 @@ Version : v1.2.1
 const SCRIPT_NAME = "每日60S";
 const TITLE_MAIN = "每日60S · 读懂世界 💭";
 const SCRIPT_AUTHOR = "@Nullwhy";
-const SCRIPT_VERSION = "v1.2.1";
+const SCRIPT_VERSION = "v1.2.2";
 const SCRIPT_UPDATED = "2026-07-23";
 const STORE_KEY = "60s_last_date";
 const DEFAULT_API = "https://60s-api.viki.moe/v2/60s";
@@ -130,26 +130,30 @@ function buildSubtitle(lunar, date, dow) {
   return "读懂世界";
 }
 
-function isDirectDownloadImage(url) {
-  if (!url) return false;
-  const u = String(url);
-  // ALAPI 图床常带 Content-Disposition: attachment，Safari 会弹「下载」而不是预览
-  if (/file\.alapi\.cn/i.test(u)) return true;
-  if (/[?&](download|attachment)=/i.test(u)) return true;
-  return false;
+/** ALAPI 等图床直链常强制下载，包一层图片代理便于浏览器内预览 */
+function toPreviewableImageUrl(url) {
+  if (!url) return "";
+  const u = String(url).trim();
+  if (!u) return "";
+  // 已是代理地址则不再包
+  if (/wsrv\.nl|images\.weserv\.nl/i.test(u)) return u;
+  // file.alapi.cn 或带 attachment 的链：用 wsrv 代理，Safari 通常直接显示图
+  if (/file\.alapi\.cn/i.test(u) || /[?&](download|attachment)=/i.test(u)) {
+    return "https://wsrv.nl/?url=" + encodeURIComponent(u) + "&output=png";
+  }
+  return u;
 }
 
-function resolveOpenUrl(mode, image, link) {
+function resolveOpenUrl(mode, image) {
   const m = (mode || "image").toLowerCase();
   if (m === "none" || m === "off" || m === "false") return "";
-  // image：优先可预览的图；ALAPI file.alapi.cn 易触发下载，改为不设置点击（避免下载框）
+  // image：始终尝试给出可打开的预览 URL（避免 openUrl 为空时点进 Egern 脚本记录）
   if (m === "image") {
-    if (image && !isDirectDownloadImage(image)) return image;
-    // 无合适预览图时不打开（比弹下载更好）
-    return "";
+    return toPreviewableImageUrl(image);
   }
-  return image || "";
+  return toPreviewableImageUrl(image);
 }
+
 
 
 /** 统一不同接口字段 → { date, news, tip, image, dow, lunar } */
