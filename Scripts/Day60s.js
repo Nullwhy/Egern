@@ -1,6 +1,6 @@
 /******************************
 脚本名称: 每日60S
-Version : v1.2.5
+Version : v1.2.6
 更新时间: 2026-07-23
 平台: Egern
 功能: 每日60秒读懂世界（定时通知）
@@ -19,7 +19,7 @@ Version : v1.2.5
 const SCRIPT_NAME = "每日60S";
 const TITLE_MAIN = "每日60S · 读懂世界 💭";
 const SCRIPT_AUTHOR = "@Nullwhy";
-const SCRIPT_VERSION = "v1.2.5";
+const SCRIPT_VERSION = "v1.2.6";
 const SCRIPT_UPDATED = "2026-07-23";
 const STORE_KEY = "60s_last_date";
 const DEFAULT_API = "https://60s-api.viki.moe/v2/60s";
@@ -131,32 +131,63 @@ function buildSubtitle(lunar, date, dow) {
 }
 
 /**
- * image 模式点击目标：
- * - 有 TOKEN：打开 ALAPI 官方 format=image（你已验证可预览）
- * - 无 TOKEN：仅使用非 file.alapi.cn 的可预览直链
- * 不再使用 wsrv / data: HTML（前者 403，后者易不被 openUrl 支持）
+ * image 点击：
+ * ALAPI 的 format=image / file.alapi.cn 最终都是 Content-Disposition:attachment，
+ * 直接打开会弹「下载」。因此用 data:text/html 包一层 <img>，让浏览器当网页预览。
+ * img 的 src 使用 format=image（可 302 到 png，作图片资源加载通常不弹下载框）。
  */
+function buildAlapiImageApiUrl(token) {
+  return (
+    ALAPI_URL +
+    "?token=" +
+    encodeURIComponent(String(token || "").trim()) +
+    "&format=image"
+  );
+}
+
+function buildHtmlImageViewer(imgUrl) {
+  const u = String(imgUrl || "").trim();
+  if (!u) return "";
+  const safe = u
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  const html =
+    "<!DOCTYPE html><html><head><meta charset=\"utf-8\">" +
+    "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1,maximum-scale=3\">" +
+    "<title>每日60S</title>" +
+    "<style>*{box-sizing:border-box}html,body{margin:0;padding:0;background:#111;min-height:100%}" +
+    "img{display:block;width:100%;height:auto;margin:0 auto}</style></head><body>" +
+    "<img src=\"" +
+    safe +
+    "\" alt=\"60s\"/></body></html>";
+  return "data:text/html;charset=utf-8," + encodeURIComponent(html);
+}
+
 function resolveOpenUrl(mode, image, token) {
   const m = (mode || "image").toLowerCase();
   if (m === "none" || m === "off" || m === "false") return "";
 
   const tok = (token || "").trim();
+  // 有 ALAPI token：用 format=image 作 <img src>，外层 data HTML 预览
   if (tok) {
-    return (
-      ALAPI_URL +
-      "?token=" +
-      encodeURIComponent(tok) +
-      "&format=image"
-    );
+    const apiImg = buildAlapiImageApiUrl(tok);
+    const viewer = buildHtmlImageViewer(apiImg);
+    if (viewer) return viewer;
+    return apiImg;
   }
 
+  // 无 token：直链预览；跳过易下载的 file.alapi.cn
   const u = (image || "").trim();
   if (!u) return "";
-  if (/file\.alapi\.cn/i.test(u)) return "";
+  if (/file\.alapi\.cn/i.test(u)) {
+    return buildHtmlImageViewer(u) || "";
+  }
   if (/wsrv\.nl|images\.weserv\.nl/i.test(u)) return "";
-  if (/^data:/i.test(u)) return "";
   return u;
 }
+
 
 
 
