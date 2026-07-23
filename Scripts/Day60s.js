@@ -1,25 +1,24 @@
 /******************************
 脚本名称: 每日60S
-Version : v1.2.6
+Version : v1.2.7
 更新时间: 2026-07-23
 平台: Egern
 功能: 每日60秒读懂世界（定时通知）
 脚本作者: @Nullwhy
 使用说明:
 1. 模块 Rewrite/Day60s.module
-2. 默认用免费 viki 接口；若申请了 ALAPI「每日早报」，在模块参数填 TOKEN 即可
-环境变量 env:
-- TOKEN / ALAPI_TOKEN  ALAPI 控制台 Token（填写后走 alapi 早报）
-- API_URL   自定义完整 URL（可选；一般不用填）
-- MAX_NEWS  新闻条数，默认 4（0=全部）
-- OPEN_URL  image | none，默认 image
-- DEDUPE    true/false，同日只推一次，默认 false
+2. TOKEN 填 ALAPI 用早报文字；点击 image 用 viki 可预览 https 海报
+环境变量:
+- TOKEN / ALAPI_TOKEN  ALAPI Token；留空用免费 viki
+- MAX_NEWS  默认 4（0=全部）
+- OPEN_URL  image | none
+- DEDUPE    默认 false
 *******************************/
 
 const SCRIPT_NAME = "每日60S";
 const TITLE_MAIN = "每日60S · 读懂世界 💭";
 const SCRIPT_AUTHOR = "@Nullwhy";
-const SCRIPT_VERSION = "v1.2.6";
+const SCRIPT_VERSION = "v1.2.7";
 const SCRIPT_UPDATED = "2026-07-23";
 const STORE_KEY = "60s_last_date";
 const DEFAULT_API = "https://60s-api.viki.moe/v2/60s";
@@ -31,10 +30,6 @@ function log(msg) {
   console.log("[" + SCRIPT_NAME + "] " + msg);
 }
 
-/**
- * 通知 + 点击跳转（action.openUrl）
- * 说明：通知由 Egern 发出，iOS 仍可能短暂激活 App，无法彻底禁止。
- */
 function notifyWithCtx(ctx, title, subtitle, body, openUrl) {
   console.log("📢 " + title + " - " + subtitle + ": " + body);
   if (openUrl) console.log("🔗 " + openUrl);
@@ -47,7 +42,7 @@ function notifyWithCtx(ctx, title, subtitle, body, openUrl) {
         body: body,
         sound: true
       };
-      if (openUrl) {
+      if (openUrl && /^https?:\/\//i.test(openUrl)) {
         payload.action = { type: "openUrl", url: openUrl };
       }
       return ctx.notify(payload);
@@ -84,7 +79,6 @@ function envMaxNews(env, key, def) {
   return Number.isFinite(n) ? n : def;
 }
 
-/** 去掉接口自带的序号：1、 1. 1． 等 */
 function stripLeadingIndex(text) {
   return String(text || "")
     .replace(/^\s*\d+\s*[\.．、:：]\s*/u, "")
@@ -92,7 +86,6 @@ function stripLeadingIndex(text) {
     .trim();
 }
 
-/** 去掉重复的【微语】前缀 */
 function stripWeiyuPrefix(text) {
   return String(text || "")
     .replace(/^\s*【\s*微语\s*】\s*/u, "")
@@ -104,12 +97,12 @@ function buildBody(news, tip, maxNews) {
   const all = Array.isArray(news) ? news : [];
   const list = maxNews > 0 ? all.slice(0, maxNews) : all.slice();
   const lines = list.map(function (item, i) {
-    let t =
+    var s =
       typeof item === "string"
         ? item
         : (item && (item.title || item.text)) || String(item);
-    t = stripLeadingIndex(t);
-    return i + 1 + ". " + t;
+    s = stripLeadingIndex(s);
+    return i + 1 + ". " + s;
   });
   const tipClean = stripWeiyuPrefix(tip);
   if (tipClean) {
@@ -130,92 +123,15 @@ function buildSubtitle(lunar, date, dow) {
   return "读懂世界";
 }
 
-/**
- * image 点击：
- * ALAPI 的 format=image / file.alapi.cn 最终都是 Content-Disposition:attachment，
- * 直接打开会弹「下载」。因此用 data:text/html 包一层 <img>，让浏览器当网页预览。
- * img 的 src 使用 format=image（可 302 到 png，作图片资源加载通常不弹下载框）。
- */
-function buildAlapiImageApiUrl(token) {
-  return (
-    ALAPI_URL +
-    "?token=" +
-    encodeURIComponent(String(token || "").trim()) +
-    "&format=image"
-  );
-}
-
-function buildHtmlImageViewer(imgUrl) {
-  const u = String(imgUrl || "").trim();
-  if (!u) return "";
-  const safe = u
-    .replace(/&/g, "&amp;")
-    .replace(/"/g, "&quot;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-  const html =
-    "<!DOCTYPE html><html><head><meta charset=\"utf-8\">" +
-    "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1,maximum-scale=3\">" +
-    "<title>每日60S</title>" +
-    "<style>*{box-sizing:border-box}html,body{margin:0;padding:0;background:#111;min-height:100%}" +
-    "img{display:block;width:100%;height:auto;margin:0 auto}</style></head><body>" +
-    "<img src=\"" +
-    safe +
-    "\" alt=\"60s\"/></body></html>";
-  return "data:text/html;charset=utf-8," + encodeURIComponent(html);
-}
-
-function resolveOpenUrl(mode, image, token) {
+function resolveOpenUrl(mode, image) {
   const m = (mode || "image").toLowerCase();
   if (m === "none" || m === "off" || m === "false") return "";
-
-  const tok = (token || "").trim();
-  // 有 ALAPI token：用 format=image 作 <img src>，外层 data HTML 预览
-  if (tok) {
-    const apiImg = buildAlapiImageApiUrl(tok);
-    const viewer = buildHtmlImageViewer(apiImg);
-    if (viewer) return viewer;
-    return apiImg;
-  }
-
-  // 无 token：直链预览；跳过易下载的 file.alapi.cn
   const u = (image || "").trim();
   if (!u) return "";
-  if (/file\.alapi\.cn/i.test(u)) {
-    return buildHtmlImageViewer(u) || "";
-  }
+  if (!/^https?:\/\//i.test(u)) return "";
+  if (/file\.alapi\.cn/i.test(u)) return "";
   if (/wsrv\.nl|images\.weserv\.nl/i.test(u)) return "";
   return u;
-}
-
-
-
-
-
-/** 统一不同接口字段 → { date, news, tip, image, dow, lunar } */
-function normalizePayload(json, source) {
-  const root = json && json.data !== undefined ? json.data : json;
-  const data = root || {};
-  let news = data.news || data.list || [];
-  if (typeof news === "string") {
-    news = news.split(/\n+/).filter(Boolean);
-  }
-  const tip = stripWeiyuPrefix(data.tip || data.weiyu || data.wei_yu || "");
-  const image = data.image || data.head_image || data.cover || data.headImage || "";
-  const date = data.date || data.today || "";
-  const dow = data.day_of_week || data.week || "";
-  const lunar = data.lunar_date || data.lunar || "";
-  return {
-    date: date,
-    news: (Array.isArray(news) ? news : []).map(function (x) {
-    return typeof x === "string" ? stripLeadingIndex(x) : x;
-  }),
-    tip: tip,
-    image: image,
-    dow: dow,
-    lunar: lunar,
-    source: source || ""
-  };
 }
 
 async function fetchJSON(ctx, url) {
@@ -236,32 +152,59 @@ async function fetchJSON(ctx, url) {
   }
 }
 
+function normalizePayload(json, source) {
+  const root = json && json.data !== undefined ? json.data : json;
+  const data = root || {};
+  var news = data.news || data.list || [];
+  if (typeof news === "string") {
+    news = news.split(/\n+/).filter(Boolean);
+  }
+  news = (Array.isArray(news) ? news : []).map(function (x) {
+    return typeof x === "string" ? stripLeadingIndex(x) : x;
+  });
+  return {
+    date: data.date || data.today || "",
+    news: news,
+    tip: stripWeiyuPrefix(data.tip || data.weiyu || data.wei_yu || ""),
+    image: data.image || data.head_image || data.cover || data.headImage || "",
+    dow: data.day_of_week || data.week || "",
+    lunar: data.lunar_date || data.lunar || "",
+    source: source || ""
+  };
+}
+
 function buildAlapiUrl(token) {
-  return (
-    ALAPI_URL +
-    "?token=" +
-    encodeURIComponent(token) +
-    "&format=json"
-  );
+  return ALAPI_URL + "?token=" + encodeURIComponent(token) + "&format=json";
+}
+
+async function fetchPreviewPosterUrl(ctx) {
+  const urls = [DEFAULT_API].concat(FALLBACK_APIS);
+  for (var i = 0; i < urls.length; i++) {
+    try {
+      const json = await fetchJSON(ctx, urls[i]);
+      const n = normalizePayload(json, "viki");
+      const img = resolveOpenUrl("image", n.image);
+      if (img) return img;
+    } catch (e) {
+      log("预览海报失败: " + (e && e.message ? e.message : e));
+    }
+  }
+  return "";
 }
 
 async function loadNews(ctx, env) {
   const token = getEnv(env, ["TOKEN", "ALAPI_TOKEN", "ALAPI_KEY"], "");
   const customUrl = getEnv(env, ["API_URL"], "");
 
-  // 1) 用户自定义完整 URL（可自带 token 查询参数）
   if (customUrl) {
     log("使用自定义 API_URL");
     const json = await fetchJSON(ctx, customUrl);
     return normalizePayload(json, "custom");
   }
 
-  // 2) ALAPI 每日早报（控制台 Token）
   if (token) {
-    const url = buildAlapiUrl(token);
-    log("使用 ALAPI 每日早报");
-    const json = await fetchJSON(ctx, url);
-    // ALAPI: { code:200, data:{ date, news, weiyu, image, head_image } }
+    log("使用 ALAPI 每日早报（文字）");
+    const json = await fetchJSON(ctx, buildAlapiUrl(token));
     if (json && (json.code === 200 || json.success === true || json.data)) {
       if (json.code && json.code !== 200 && !json.data) {
         throw new Error(json.message || "ALAPI 错误 code=" + json.code);
@@ -271,10 +214,9 @@ async function loadNews(ctx, env) {
     throw new Error((json && json.message) || "ALAPI 返回异常");
   }
 
-  // 3) 默认免费 viki 接口
   const urls = [DEFAULT_API].concat(FALLBACK_APIS);
-  let lastErr;
-  for (let i = 0; i < urls.length; i++) {
+  var lastErr;
+  for (var i = 0; i < urls.length; i++) {
     try {
       log("使用免费接口: " + urls[i]);
       const json = await fetchJSON(ctx, urls[i]);
@@ -295,7 +237,6 @@ async function main(ctx) {
   const maxNews = envMaxNews(env, "MAX_NEWS", DEFAULT_MAX_NEWS);
   const dedupe = envBool(env, "DEDUPE", false);
   const openMode = getEnv(env, ["OPEN_URL"], "image");
-  const token = getEnv(env, ["TOKEN", "ALAPI_TOKEN", "ALAPI_KEY"], "");
 
   log(
     "开始获取 " +
@@ -338,7 +279,12 @@ async function main(ctx) {
 
     const subtitle = buildSubtitle(lunar, date, dow);
     const body = buildBody(news, tip, maxNews);
-    const openUrl = resolveOpenUrl(openMode, image, token);
+
+    var openUrl = resolveOpenUrl(openMode, image);
+    if (openMode === "image" && !openUrl) {
+      log("数据源海报不可预览，改用 viki 海报作点击目标");
+      openUrl = await fetchPreviewPosterUrl(ctx);
+    }
 
     log("数据源: " + (data.source || "unknown"));
     log("标题: " + TITLE_MAIN);
@@ -352,6 +298,7 @@ async function main(ctx) {
         news.length
     );
     if (openUrl) log("点击跳转: " + openUrl);
+    else if (openMode === "image") log("无可用预览图，点击将只打开 Egern");
 
     await notifyWithCtx(ctx, TITLE_MAIN, subtitle, body, openUrl);
 
