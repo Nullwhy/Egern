@@ -3,7 +3,7 @@
 # 作者: @Nullwhy
 # 更新: 2026-07-23
 name: "每日60S"
-description: "每天定时推送60秒新闻"
+description: "每天定时推送60秒新闻（自动拆多条通知以显示全文）"
 author: "Nullwhy"
 icon: "https://raw.githubusercontent.com/luestr/IconResource/main/App_icon/120px/MoeGirlWiki.png"
 
@@ -11,8 +11,10 @@ compat_arguments:
   MINUTE: "15"
   HOUR: "8"
   MAX_NEWS: "0"
+  CHUNK_SIZE: "5"
   OPEN_URL: "none"
   DEDUPE: "false"
+
 env_schema:
   MINUTE:
     name: 分钟
@@ -20,15 +22,19 @@ env_schema:
     default_value: "15"
   HOUR:
     name: 小时
-    description: 每天触发的小时（0-23），默认 8（即 08:15）
+    description: 每天触发的小时（0-23），默认 8
     default_value: "8"
   MAX_NEWS:
     name: 新闻条数
-    description: 默认0=全部新闻（通知内阅读）；>0 为前N条
+    description: 0=全部；>0 为最多前N条
     default_value: "0"
+  CHUNK_SIZE:
+    name: 每条通知条数
+    description: 单条通知约只能显示5–6条，默认5，自动拆成多条
+    default_value: "5"
   OPEN_URL:
     name: 点击打开
-    description: none=不跳转（推荐，少开 Egern） / image=打开海报
+    description: none=不跳转（推荐） / image=打开海报
     options:
       - none
       - image
@@ -47,5 +53,6 @@ scriptings:
       script_url: "https://raw.githubusercontent.com/Nullwhy/Egern/main/Scripts/Day60s.js"
       env:
         MAX_NEWS: "{{{MAX_NEWS}}}"
+        CHUNK_SIZE: "{{{CHUNK_SIZE}}}"
         OPEN_URL: "{{{OPEN_URL}}}"
         DEDUPE: "{{{DEDUPE}}}"
