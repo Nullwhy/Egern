@@ -1,27 +1,27 @@
 /******************************
 脚本名称: 每日60S
-Version : v1.1.20
+Version : v1.1.21
 更新时间: 2026-07-23
 平台: Egern
 功能: 每日60秒读懂世界（定时通知）
 脚本作者: @Nullwhy
 使用说明:
 1. 模块 Rewrite/Day60s.module
-2. 默认通知内展示全部新闻：因 iOS 单条正文约只能完整显示 ~5–6 条，
-   将自动拆成多条通知（如 1/3、2/3、3/3）
-3. OPEN_URL 默认 none，减少点击打开 Egern
+2. MULTI_NOTIFY=true 时拆成多条通知显示更多新闻（默认关闭，只发 1 条）
+3. OPEN_URL 默认 none
 环境变量 env:
-- API_URL    默认 https://60s-api.viki.moe/v2/60s
-- MAX_NEWS   最多条数，0=全部（默认 0）
-- CHUNK_SIZE 每条通知新闻数，默认 5（适配系统通知长度）
-- OPEN_URL   image | none，默认 none
-- DEDUPE     true/false，默认 false
+- API_URL      默认 https://60s-api.viki.moe/v2/60s
+- MAX_NEWS     最多条数，0=全部（默认 0）
+- MULTI_NOTIFY true=多条通知，false=单条（默认 false）
+- CHUNK_SIZE   多条模式下每条通知新闻数，默认 5
+- OPEN_URL     image | none，默认 none
+- DEDUPE       true/false，默认 false
 *******************************/
 
 const SCRIPT_NAME = "每日60S";
 const TITLE_MAIN = "每日60S · 读懂世界 💭";
 const SCRIPT_AUTHOR = "@Nullwhy";
-const SCRIPT_VERSION = "v1.1.20";
+const SCRIPT_VERSION = "v1.1.21";
 const SCRIPT_UPDATED = "2026-07-23";
 const STORE_KEY = "60s_last_date";
 const DEFAULT_API = "https://60s-api.viki.moe/v2/60s";
@@ -215,6 +215,7 @@ async function main(ctx) {
   const env = (ctx && ctx.env) || {};
   const apiUrl = getEnv(env, ["API_URL"], DEFAULT_API);
   const maxNews = envInt(env, "MAX_NEWS", DEFAULT_MAX_NEWS);
+  const multiNotify = envBool(env, "MULTI_NOTIFY", false);
   const chunkSize = Math.max(1, envInt(env, "CHUNK_SIZE", DEFAULT_CHUNK_SIZE));
   const dedupe = envBool(env, "DEDUPE", false);
   const openMode = getEnv(env, ["OPEN_URL"], "none");
@@ -269,21 +270,24 @@ async function main(ctx) {
       if (!openUrl) openUrl = resolveOpenUrl("image", vikiPosterByDate(date));
     }
 
-    // iOS 单条通知正文大约只能完整显示 ~5–6 条长新闻 → 拆成多条
-    const chunks = chunkArray(news, chunkSize);
+    // MULTI_NOTIFY=true：拆多条；默认 false 只发一条（系统可能截断长正文）
+    var effectiveChunk = multiNotify ? chunkSize : news.length || 1;
+    if (!multiNotify) effectiveChunk = news.length || 1;
+    const chunks = multiNotify
+      ? chunkArray(news, chunkSize)
+      : [news.slice()];
     const total = chunks.length;
     log(
       "新闻 " +
         news.length +
-        " 条，拆成 " +
-        total +
-        " 条通知（每条 " +
-        chunkSize +
-        " 条）"
+        " 条，" +
+        (multiNotify
+          ? "多条通知模式，共 " + total + " 条（每条最多 " + chunkSize + "）"
+          : "单条通知模式")
     );
 
     for (var i = 0; i < total; i++) {
-      const startIndex = i * chunkSize;
+      const startIndex = multiNotify ? i * chunkSize : 0;
       const isLast = i === total - 1;
       const partBody = buildBodyChunk(
         chunks[i],
@@ -292,7 +296,6 @@ async function main(ctx) {
       );
       const partTitle =
         total > 1 ? TITLE_MAIN + " (" + (i + 1) + "/" + total + ")" : TITLE_MAIN;
-      // 仅最后一条带点击跳转（若开启），避免多条都跳转
       const partOpen = isLast ? openUrl : "";
 
       log("发送通知 " + (i + 1) + "/" + total);
