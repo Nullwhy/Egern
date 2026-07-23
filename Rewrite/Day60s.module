@@ -51,8 +51,8 @@ env_schema:
       - image
       - none
   ALLOW_REPEAT:
-    name: 允许同日多次
-    description: 默认关闭（即同日只推一次）；开启后同一天可多次推送
+    name: 推送
+    description: 默认关闭（同日只推送一次）/开启后同日可推送多次
     default_value: "false"
     options:
       - "false"
