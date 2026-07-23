@@ -3,7 +3,7 @@
 # 作者: @Nullwhy
 # 更新: 2026-07-23
 name: "每日60S"
-description: "每天定时推送60秒新闻（自动拆多条通知以显示全文）"
+description: "每天定时推送60秒新闻"
 author: "Nullwhy"
 icon: "https://raw.githubusercontent.com/luestr/IconResource/main/App_icon/120px/MoeGirlWiki.png"
 
@@ -11,6 +11,7 @@ compat_arguments:
   MINUTE: "15"
   HOUR: "8"
   MAX_NEWS: "0"
+  MULTI_NOTIFY: "false"
   CHUNK_SIZE: "5"
   OPEN_URL: "none"
   DEDUPE: "false"
@@ -28,9 +29,15 @@ env_schema:
     name: 新闻条数
     description: 0=全部；>0 为最多前N条
     default_value: "0"
+  MULTI_NOTIFY:
+    name: 多条通知
+    description: 开启后拆成多条通知以显示更多新闻；默认关闭
+    options:
+      - "false"
+      - "true"
   CHUNK_SIZE:
     name: 每条通知条数
-    description: 单条通知约只能显示5–6条，默认5，自动拆成多条
+    description: 仅多条通知开启时生效，默认 5
     default_value: "5"
   OPEN_URL:
     name: 点击打开
@@ -53,6 +60,7 @@ scriptings:
       script_url: "https://raw.githubusercontent.com/Nullwhy/Egern/main/Scripts/Day60s.js"
       env:
         MAX_NEWS: "{{{MAX_NEWS}}}"
+        MULTI_NOTIFY: "{{{MULTI_NOTIFY}}}"
         CHUNK_SIZE: "{{{CHUNK_SIZE}}}"
         OPEN_URL: "{{{OPEN_URL}}}"
         DEDUPE: "{{{DEDUPE}}}"
