@@ -1,29 +1,17 @@
 /******************************
 脚本名称: 每日60S
-Version : v1.1.25
+Version : v1.1.26
 更新时间: 2026-07-23
 平台: Egern
 功能: 每日60秒读懂世界（定时通知）
 脚本作者: @Nullwhy
-使用说明:
-1. 模块 Rewrite/Day60s.module
-2. MULTI_NOTIFY=true 时拆成多条通知显示更多新闻（默认关闭，只发 1 条）
-3. OPEN_URL 默认 none
-环境变量 env:
-- API_URL      默认 https://60s-api.viki.moe/v2/60s
-- MAX_NEWS     单条默认 5；0=全部（多条通知开启时建议 0）
-- MULTI_NOTIFY true=多条通知，false=单条（默认 false）
-- CHUNK_SIZE   多条模式下每条条数，默认 5
-- OPEN_URL     image=打开海报 | none=不跳转（默认 image）
-- ALLOW_REPEAT 允许同日多次，默认 false（即同日只推一次）
-- DEDUPE       兼容旧参数；不填则默认只推一次
+环境变量:
+- API_URL / MAX_NEWS / MULTI_NOTIFY / CHUNK_SIZE / OPEN_URL / ALLOW_REPEAT
 *******************************/
 
 const SCRIPT_NAME = "每日60S";
 const TITLE_MAIN = "每日60S · 读懂世界 💭";
-const SCRIPT_AUTHOR = "@Nullwhy";
-const SCRIPT_VERSION = "v1.1.25";
-const SCRIPT_UPDATED = "2026-07-23";
+const SCRIPT_VERSION = "v1.1.26";
 const STORE_KEY = "60s_last_date";
 const DEFAULT_API = "https://60s-api.viki.moe/v2/60s";
 const FALLBACK_APIS = ["https://60s.viki.moe/v2/60s"];
@@ -34,11 +22,117 @@ function log(msg) {
   console.log("[" + SCRIPT_NAME + "] " + msg);
 }
 
+function sleep(ms) {
+  return new Promise(function (resolve) {
+    setTimeout(resolve, ms);
+  });
+}
+
+function getEnv(env, names, fallback) {
+  if (fallback === undefined) fallback = "";
+  for (var i = 0; i < names.length; i++) {
+    var value = env && env[names[i]];
+    if (value !== undefined && value !== null && String(value).trim() !== "") {
+      return String(value).trim();
+    }
+  }
+  return fallback;
+}
+
+function envBool(env, key, def) {
+  if (!env || env[key] === undefined || env[key] === null || String(env[key]).trim() === "") {
+    return !!def;
+  }
+  var v = String(env[key]).trim().toLowerCase();
+  if (["1", "true", "yes", "on"].indexOf(v) !== -1) return true;
+  if (["0", "false", "no", "off"].indexOf(v) !== -1) return false;
+  return !!def;
+}
+
+function envInt(env, key, def) {
+  var n = parseInt(getEnv(env, [key], String(def)), 10);
+  return Number.isFinite(n) ? n : def;
+}
+
+/** 默认同日只推一次；ALLOW_REPEAT=true 时允许多次 */
+function shouldDedupe(env) {
+  return !envBool(env || {}, "ALLOW_REPEAT", false);
+}
+
+function stripLeadingIndex(text) {
+  return String(text || "")
+    .replace(/^\s*\d+\s*[\.．、:：]\s*/u, "")
+    .trim();
+}
+
+function chunkArray(arr, size) {
+  var out = [];
+  var s = size > 0 ? size : 1;
+  for (var i = 0; i < arr.length; i += s) out.push(arr.slice(i, i + s));
+  return out.length ? out : [[]];
+}
+
+function buildBodyChunk(newsChunk, startIndex, tip) {
+  var lines = (newsChunk || []).map(function (item, i) {
+    var s =
+      typeof item === "string"
+        ? item
+        : (item && (item.title || item.text)) || String(item);
+    return startIndex + i + 1 + ". " + stripLeadingIndex(s);
+  });
+  if (tip) {
+    lines.push("");
+    lines.push(
+      "【微语】" +
+        String(tip)
+          .replace(/^\s*【\s*微语\s*】\s*/u, "")
+          .trim()
+    );
+  }
+  return lines.join("\n") || "暂无新闻";
+}
+
+function buildSubtitle(lunar, date, dow) {
+  var left = [];
+  if (date) left.push(date);
+  if (dow) left.push(dow);
+  var leftStr = left.join("  ");
+  if (leftStr && lunar) return leftStr + "  ·  " + lunar;
+  if (leftStr) return leftStr;
+  if (lunar) return lunar;
+  return "读懂世界";
+}
+
+function resolveOpenUrl(mode, image) {
+  var m = (mode || "image").toLowerCase();
+  if (m === "none" || m === "off" || m === "false") return "";
+  var u = String(image || "").trim();
+  if (!u) return "";
+  if (u.indexOf("//") === 0) u = "https:" + u;
+  if (!/^https?:\/\//i.test(u)) {
+    if (/^[a-z0-9.-]+\//i.test(u)) u = "https://" + u;
+    else return "";
+  }
+  u = u.replace(/^http:\/\//i, "https://");
+  if (/file\.alapi\.cn|wsrv\.nl|images\.weserv\.nl|^data:/i.test(u)) return "";
+  return u;
+}
+
+function vikiPosterByDate(date) {
+  var d = String(date || "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return "";
+  return (
+    "https://cdn.jsdmirror.com/gh/vikiboss/60s-static-host@main/static/images/" +
+    d +
+    ".png"
+  );
+}
+
 function notifyWithCtx(ctx, title, subtitle, body, openUrl) {
   console.log("📢 " + title + " - " + subtitle + ": " + body);
   if (openUrl) console.log("🔗 " + openUrl);
 
-  const payload = {
+  var payload = {
     title: title,
     subtitle: subtitle,
     body: body,
@@ -63,151 +157,16 @@ function notifyWithCtx(ctx, title, subtitle, body, openUrl) {
   }
 }
 
-function sleep(ms) {
-  return new Promise(function (resolve) {
-    setTimeout(resolve, ms);
-  });
-}
-
-function getEnv(env, names, fallback) {
-  if (fallback === undefined) fallback = "";
-  for (let i = 0; i < names.length; i++) {
-    const value = env && env[names[i]];
-    if (value !== undefined && value !== null && String(value).trim() !== "") {
-      return String(value).trim();
-    }
-  }
-  return fallback;
-}
-
-function envBool(env, key, def) {
-  // 未设置或空字符串时用 def（首次添加模块时 Toggle 可能未写入 env）
-  if (!env || env[key] === undefined || env[key] === null || String(env[key]).trim() === "") {
-    return !!def;
-  }
-  const v = String(env[key]).trim().toLowerCase();
-  if (["1", "true", "yes", "on", "开启"].indexOf(v) !== -1) return true;
-  if (["0", "false", "no", "off", "关闭"].indexOf(v) !== -1) return false;
-  return !!def;
-}
-
-/**
- * 同日只推一次：默认 true
- * 模块 UI 使用「允许同日多次」ALLOW_REPEAT（Toggle 默认关 = 不允许多次 = 只推一次）
- * 兼容旧参数 DEDUPE
- */
-function resolveDedupe(env) {
-  env = env || {};
-  // 显式 DEDUPE 优先（含空则走默认）
-  if (env.DEDUPE !== undefined && env.DEDUPE !== null && String(env.DEDUPE).trim() !== "") {
-    return envBool(env, "DEDUPE", true);
-  }
-  // 允许同日多次：默认 false → 同日只推一次
-  if (
-    env.ALLOW_REPEAT !== undefined &&
-    env.ALLOW_REPEAT !== null &&
-    String(env.ALLOW_REPEAT).trim() !== ""
-  ) {
-    return !envBool(env, "ALLOW_REPEAT", false);
-  }
-  return true;
-}
-
-
-function envInt(env, key, def) {
-  const n = parseInt(getEnv(env, [key], String(def)), 10);
-  return Number.isFinite(n) ? n : def;
-}
-
-function stripLeadingIndex(text) {
-  return String(text || "")
-    .replace(/^\s*\d+\s*[\.．、:：]\s*/u, "")
-    .trim();
-}
-
-function chunkArray(arr, size) {
-  const out = [];
-  const s = size > 0 ? size : arr.length || 1;
-  for (let i = 0; i < arr.length; i += s) {
-    out.push(arr.slice(i, i + s));
-  }
-  return out.length ? out : [[]];
-}
-
-function buildBodyChunk(newsChunk, startIndex, tip) {
-  const lines = (newsChunk || []).map(function (item, i) {
-    var s =
-      typeof item === "string"
-        ? item
-        : (item && (item.title || item.text)) || String(item);
-    s = stripLeadingIndex(s);
-    return startIndex + i + 1 + ". " + s;
-  });
-  if (tip) {
-    lines.push("");
-    lines.push(
-      "【微语】" +
-        String(tip)
-          .replace(/^\s*【\s*微语\s*】\s*/u, "")
-          .trim()
-    );
-  }
-  return lines.join("\n") || "暂无新闻";
-}
-
-function buildSubtitle(lunar, date, dow) {
-  const left = [];
-  if (date) left.push(date);
-  if (dow) left.push(dow);
-  const leftStr = left.join("  ");
-  if (leftStr && lunar) return leftStr + "  ·  " + lunar;
-  if (leftStr) return leftStr;
-  if (lunar) return lunar;
-  return "读懂世界";
-}
-
-function normalizeHttpsImageUrl(url) {
-  if (!url) return "";
-  var u = String(url).trim();
-  if (!u) return "";
-  if (u.indexOf("//") === 0) u = "https:" + u;
-  if (!/^https?:\/\//i.test(u)) {
-    if (/^[a-z0-9.-]+\//i.test(u)) u = "https://" + u;
-    else return "";
-  }
-  u = u.replace(/^http:\/\//i, "https://");
-  if (/file\.alapi\.cn/i.test(u)) return "";
-  if (/wsrv\.nl|images\.weserv\.nl/i.test(u)) return "";
-  if (/^data:/i.test(u)) return "";
-  return u;
-}
-
-function resolveOpenUrl(mode, image) {
-  const m = (mode || "none").toLowerCase();
-  if (m === "none" || m === "off" || m === "false") return "";
-  return normalizeHttpsImageUrl(image);
-}
-
-function vikiPosterByDate(date) {
-  const d = String(date || "").trim();
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return "";
-  return (
-    "https://cdn.jsdmirror.com/gh/vikiboss/60s-static-host@main/static/images/" +
-    d +
-    ".png"
-  );
-}
-
 async function fetchNews(ctx, url) {
-  const response = await ctx.http.get(url, {
+  var response = await ctx.http.get(url, {
     headers: {
       Accept: "application/json",
       "User-Agent": "Egern-60s/" + SCRIPT_VERSION
     },
     timeout: 20000
   });
-  const status = response.status;
-  const body = await response.text();
+  var status = response.status;
+  var body = await response.text();
   if (!(status >= 200 && status < 300)) throw new Error("HTTP " + status);
   try {
     return JSON.parse(body);
@@ -217,20 +176,19 @@ async function fetchNews(ctx, url) {
 }
 
 async function load60s(ctx, apiUrl) {
-  const seen = {};
-  const urls = [];
+  var urls = [];
+  var seen = {};
   [apiUrl].concat(FALLBACK_APIS).forEach(function (u) {
     if (u && !seen[u]) {
       seen[u] = true;
       urls.push(u);
     }
   });
-  let lastErr;
-  for (let i = 0; i < urls.length; i++) {
-    const url = urls[i];
+  var lastErr;
+  for (var i = 0; i < urls.length; i++) {
     try {
-      log("请求: " + url);
-      const json = await fetchNews(ctx, url);
+      log("请求: " + urls[i]);
+      var json = await fetchNews(ctx, urls[i]);
       if (json && (json.code === 200 || json.data)) return json;
       lastErr = new Error("返回数据异常");
     } catch (e) {
@@ -242,58 +200,38 @@ async function load60s(ctx, apiUrl) {
 }
 
 async function main(ctx) {
-  const env = (ctx && ctx.env) || {};
-  const apiUrl = getEnv(env, ["API_URL"], DEFAULT_API);
-  const maxNews = envInt(env, "MAX_NEWS", DEFAULT_MAX_NEWS);
-  const multiNotify = envBool(env, "MULTI_NOTIFY", false);
-  const chunkSize = Math.max(1, envInt(env, "CHUNK_SIZE", DEFAULT_CHUNK_SIZE));
-  const dedupe = resolveDedupe(env);
-  const openMode = getEnv(env, ["OPEN_URL"], "image");
+  var env = (ctx && ctx.env) || {};
+  var apiUrl = getEnv(env, ["API_URL"], DEFAULT_API);
+  var maxNews = envInt(env, "MAX_NEWS", DEFAULT_MAX_NEWS);
+  var multiNotify = envBool(env, "MULTI_NOTIFY", false);
+  var chunkSize = Math.max(1, envInt(env, "CHUNK_SIZE", DEFAULT_CHUNK_SIZE));
+  var dedupe = shouldDedupe(env);
+  var openMode = getEnv(env, ["OPEN_URL"], "image");
 
-  log("MULTI_NOTIFY=" + getEnv(env, ["MULTI_NOTIFY"], "") + " multi=" + multiNotify);
   log(
-    "开始获取 " +
-      SCRIPT_NAME +
-      " | " +
-      SCRIPT_VERSION +
-      " | " +
-      SCRIPT_AUTHOR +
-      " | " +
-      SCRIPT_UPDATED
+    "开始获取 " + SCRIPT_NAME + " | " + SCRIPT_VERSION + " | multi=" + multiNotify
   );
 
   try {
-    const json = await load60s(ctx, apiUrl);
-    const data = json.data || {};
-    const date = data.date || "";
+    var json = await load60s(ctx, apiUrl);
+    var data = json.data || {};
+    var date = data.date || "";
     var news = data.news || [];
-    const tip = data.tip || "";
-    const image = data.image || data.cover || "";
-    const dow = data.day_of_week || "";
-    const lunar = data.lunar_date || "";
+    var tip = data.tip || "";
+    var image = data.image || data.cover || "";
+    var dow = data.day_of_week || "";
+    var lunar = data.lunar_date || "";
 
-    // 多条通知：默认用全部新闻再拆分。
-    // 若仍用 MAX_NEWS=5 且 CHUNK_SIZE=5，会只剩 1 组，看起来像开关无效。
+    // 多条通知：用全部新闻拆分（避免 MAX_NEWS=5 且 CHUNK=5 时只剩 1 条）
     if (multiNotify) {
-      if (maxNews > 0 && maxNews > chunkSize) {
-        news = news.slice(0, maxNews);
-      } else if (maxNews > 0 && maxNews <= chunkSize) {
-        log(
-          "多条通知已开启：忽略新闻条数上限 " +
-            maxNews +
-            "（≤每条 " +
-            chunkSize +
-            "），改为全部新闻再拆分"
-        );
-      }
-      // maxNews===0 → 全部
+      if (maxNews > chunkSize) news = news.slice(0, maxNews);
     } else if (maxNews > 0) {
       news = news.slice(0, maxNews);
     }
 
     if (dedupe && date) {
       try {
-        const last = await ctx.storage.get(STORE_KEY);
+        var last = await ctx.storage.get(STORE_KEY);
         if (last === date) {
           log("今日已推送，跳过: " + date);
           await notifyWithCtx(
@@ -310,44 +248,37 @@ async function main(ctx) {
       }
     }
 
-    const subtitle = buildSubtitle(lunar, date, dow);
-
+    var subtitle = buildSubtitle(lunar, date, dow);
     var openUrl = "";
     if (openMode === "image") {
       openUrl = resolveOpenUrl("image", image);
       if (!openUrl) openUrl = resolveOpenUrl("image", vikiPosterByDate(date));
     }
 
-    // MULTI_NOTIFY=true：拆多条；默认 false 只发一条（系统可能截断长正文）
-    var effectiveChunk = multiNotify ? chunkSize : news.length || 1;
-    if (!multiNotify) effectiveChunk = news.length || 1;
-    const chunks = multiNotify
-      ? chunkArray(news, chunkSize)
-      : [news.slice()];
-    const total = chunks.length;
+    var chunks = multiNotify ? chunkArray(news, chunkSize) : [news.slice()];
+    var total = chunks.length;
     log(
       "新闻 " +
         news.length +
         " 条，" +
         (multiNotify
-          ? "多条通知模式，共 " + total + " 条（每条最多 " + chunkSize + "）"
-          : "单条通知模式")
+          ? "多条通知 " + total + " 条（每条最多 " + chunkSize + "）"
+          : "单条通知")
     );
 
     for (var i = 0; i < total; i++) {
-      const startIndex = multiNotify ? i * chunkSize : 0;
-      const isLast = i === total - 1;
-      const partBody = buildBodyChunk(
-        chunks[i],
-        startIndex,
-        isLast ? tip : ""
-      );
-      const partTitle =
+      var startIndex = multiNotify ? i * chunkSize : 0;
+      var isLast = i === total - 1;
+      var partBody = buildBodyChunk(chunks[i], startIndex, isLast ? tip : "");
+      var partTitle =
         total > 1 ? TITLE_MAIN + " (" + (i + 1) + "/" + total + ")" : TITLE_MAIN;
-      const partOpen = isLast ? openUrl : "";
-
-      log("发送通知 " + (i + 1) + "/" + total);
-      await notifyWithCtx(ctx, partTitle, subtitle, partBody, partOpen);
+      await notifyWithCtx(
+        ctx,
+        partTitle,
+        subtitle,
+        partBody,
+        isLast ? openUrl : ""
+      );
       if (!isLast) await sleep(500);
     }
 
