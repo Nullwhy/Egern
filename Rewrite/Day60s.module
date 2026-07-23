@@ -10,8 +10,8 @@ icon: "https://raw.githubusercontent.com/luestr/IconResource/main/App_icon/120px
 compat_arguments:
   MINUTE: "15"
   HOUR: "8"
-  MAX_NEWS: "4"
-  OPEN_URL: "image"
+  MAX_NEWS: "0"
+  OPEN_URL: "none"
   DEDUPE: "false"
 env_schema:
   MINUTE:
@@ -24,14 +24,14 @@ env_schema:
     default_value: "8"
   MAX_NEWS:
     name: 新闻条数
-    description: 默认4（适配通知约8行）；0=全部
-    default_value: "4"
+    description: 默认0=全部新闻（通知内阅读）；>0 为前N条
+    default_value: "0"
   OPEN_URL:
     name: 点击打开
-    description: image=海报图 / none=不跳转
+    description: none=不跳转（推荐，少开 Egern） / image=打开海报
     options:
-      - image
       - none
+      - image
   DEDUPE:
     name: 同日只推一次
     description: 默认关闭
