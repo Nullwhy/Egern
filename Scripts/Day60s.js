@@ -1,6 +1,6 @@
 /******************************
 脚本名称: 每日60S
-Version : v1.1.18
+Version : v1.1.19
 更新时间: 2026-07-23
 平台: Egern
 功能: 每日60秒读懂世界（定时通知）
@@ -8,23 +8,23 @@ Version : v1.1.18
 使用说明:
 1. 模块 Rewrite/Day60s.module 或主配置添加 schedule
 2. 默认每天 08:15 推送
-3. OPEN_URL=image 时点击通知打开 viki 海报 https 链接
+3. 默认通知正文展示全部新闻+微语；OPEN_URL 默认 none
 环境变量 env:
 - API_URL   默认 https://60s-api.viki.moe/v2/60s
-- MAX_NEWS  新闻条数，默认 4（0=全部）
-- OPEN_URL  image | none，默认 image
+- MAX_NEWS  新闻条数，默认 0=全部（通知内看全文，不依赖浏览器）
+- OPEN_URL  image | none，默认 none（不点开链接，减少打开 Egern）
 - DEDUPE    true/false，同日只推一次，默认 false
 *******************************/
 
 const SCRIPT_NAME = "每日60S";
 const TITLE_MAIN = "每日60S · 读懂世界 💭";
 const SCRIPT_AUTHOR = "@Nullwhy";
-const SCRIPT_VERSION = "v1.1.18";
+const SCRIPT_VERSION = "v1.1.19";
 const SCRIPT_UPDATED = "2026-07-23";
 const STORE_KEY = "60s_last_date";
 const DEFAULT_API = "https://60s-api.viki.moe/v2/60s";
 const FALLBACK_APIS = ["https://60s.viki.moe/v2/60s"];
-const DEFAULT_MAX_NEWS = 4;
+const DEFAULT_MAX_NEWS = 0;
 
 function log(msg) {
   console.log("[" + SCRIPT_NAME + "] " + msg);
@@ -101,20 +101,29 @@ function envMaxNews(env, key, def) {
   return Number.isFinite(n) ? n : def;
 }
 
+function stripLeadingIndex(text) {
+  return String(text || "")
+    .replace(/^\s*\d+\s*[\.．、:：]\s*/u, "")
+    .trim();
+}
+
 function buildBody(news, tip, maxNews) {
+  // maxNews<=0：全部新闻，尽量在通知正文看完，不依赖浏览器
   const all = Array.isArray(news) ? news : [];
   const list = maxNews > 0 ? all.slice(0, maxNews) : all.slice();
   const lines = list.map(function (item, i) {
-    const t =
+    var s =
       typeof item === "string"
         ? item
         : (item && (item.title || item.text)) || String(item);
-    return i + 1 + ". " + t;
+    s = stripLeadingIndex(s);
+    return i + 1 + ". " + s;
   });
   if (tip) {
     lines.push("");
-    lines.push("【微语】" + tip);
+    lines.push("【微语】" + String(tip).replace(/^\s*【\s*微语\s*】\s*/u, "").trim());
   }
+  // 不截断：完整正文交给系统通知（展开后可见；锁屏可能仍折叠）
   return lines.join("\n") || "暂无新闻";
 }
 
@@ -215,7 +224,7 @@ async function main(ctx) {
   const apiUrl = getEnv(env, ["API_URL"], DEFAULT_API);
   const maxNews = envMaxNews(env, "MAX_NEWS", DEFAULT_MAX_NEWS);
   const dedupe = envBool(env, "DEDUPE", false);
-  const openMode = getEnv(env, ["OPEN_URL"], "image");
+  const openMode = getEnv(env, ["OPEN_URL"], "none");
 
   log(
     "开始获取 " +
