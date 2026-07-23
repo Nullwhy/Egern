@@ -4,9 +4,9 @@
 #
 # 使用步骤：
 # 1. 安装并启用本模块，确保 MITM 证书已信任
-# 2. 打开 Safari/App 登录 NodeSeek，访问一次个人相关页面（触发 getInfo 接口）
-# 3. 收到「抓包成功」通知后，定时任务即可自动签到
-# 4. 也可在脚本列表手动运行「NodeSeek 签到」测试
+# 2. 打开「抓包」开关 → 登录 NodeSeek 访问个人相关页面
+# 3. 收到「抓包成功」后，手动关闭「抓包」
+# 4. 定时任务自动签到；也可手动运行「NodeSeek 签到」
 name: "NodeSeek"
 description: "NodeSeek 每日签到（先抓包再定时签到）"
 author: "Nullwhy"
@@ -15,6 +15,7 @@ icon: "https://raw.githubusercontent.com/sooyaaabo/Loon/main/Icon/App-Icon/NodeS
 compat_arguments:
   MINUTE: "0"
   HOUR: "10"
+  ENABLE_CAPTURE: "false"
 
 env_schema:
   MINUTE:
@@ -25,13 +26,19 @@ env_schema:
     name: 小时
     description: 每天签到的小时（0-23），默认 10
     default_value: "10"
+  ENABLE_CAPTURE:
+    name: 抓包
+    description: 默认关闭；开启后访问个人页保存请求头，成功后请手动关闭
+    default_value: "false"
+    options:
+      - "false"
+      - "true"
 
 mitm:
   hostnames:
     - www.nodeseek.com
 
 scriptings:
-  # 抓取签到所需请求头（访问 NodeSeek 账号相关接口时触发）
   - http_response:
       name: "NodeSeek 抓包"
       match: "^https://www\\.nodeseek\\.com/api/account/getInfo/"
@@ -39,8 +46,9 @@ scriptings:
       body_required: false
       timeout: 30
       max_size: 1048576
+      env:
+        ENABLE_CAPTURE: "{{{ENABLE_CAPTURE}}}"
 
-  # 定时签到
   - schedule:
       name: "NodeSeek 签到"
       cron: "{{{MINUTE}}} {{{HOUR}}} * * *"
