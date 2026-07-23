@@ -2,6 +2,9 @@
 # 格式: Egern 原生模块（YAML 内容，扩展名 .module）
 # 作者: @Nullwhy
 # 更新: 2026-07-23
+#
+# 说明：Egern 的 Toggle 首次添加时 UI 常固定显示为「关」。
+# 因此「同日只推一次」改为反向开关「允许同日多次」（默认关 = 只推一次）。
 name: "每日60S"
 description: "每天定时推送60秒新闻"
 author: "Nullwhy"
@@ -14,7 +17,7 @@ compat_arguments:
   MULTI_NOTIFY: "false"
   CHUNK_SIZE: "5"
   OPEN_URL: "image"
-  DEDUPE: "true"
+  ALLOW_REPEAT: "false"
 
 env_schema:
   MINUTE:
@@ -47,13 +50,13 @@ env_schema:
     options:
       - image
       - none
-  DEDUPE:
-    name: 同日只推一次
-    description: 默认开启；同一天只推送一次
-    default_value: "true"
+  ALLOW_REPEAT:
+    name: 允许同日多次
+    description: 默认关闭（即同日只推一次）；开启后同一天可多次推送
+    default_value: "false"
     options:
-      - "true"
       - "false"
+      - "true"
 
 scriptings:
   - schedule:
@@ -66,4 +69,4 @@ scriptings:
         MULTI_NOTIFY: "{{{MULTI_NOTIFY}}}"
         CHUNK_SIZE: "{{{CHUNK_SIZE}}}"
         OPEN_URL: "{{{OPEN_URL}}}"
-        DEDUPE: "{{{DEDUPE}}}"
+        ALLOW_REPEAT: "{{{ALLOW_REPEAT}}}"
