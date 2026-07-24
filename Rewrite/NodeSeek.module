@@ -1,32 +1,22 @@
 # NodeSeek — Egern 模块
-#
-# 定时不触发的常见原因（已针对性处理）：
-# 1) 分钟参数为 0 时，部分版本 {{{MINUTE}}} 被当成空 → cron 无效
-#    → 使用 "00" 作为默认分钟字符串；cron 与 Day60s 相同 5 字段
-# 2) 签到与 Cookie 抓包共用一个 JS 入口 → schedule 用独立 CheckIn.js
-# 3) Egern 未保持 VPN 连接 → 进程不在则不会跑（与是否打开界面无关）
-#
-# 使用：Cookie 开→个人页→关 Cookie；设时间 Save；保持 VPN 开启
+# 定时：使用完整 CRON 字符串（分 时 日 月 周），避免 MINUTE=0 被替换成空
+# 例：9:08 → 8 9 * * *    10:00 → 0 10 * * *    10:30 → 30 10 * * *
+# 须保持 Egern VPN 开启（可退后台；杀进程则不会跑）
 name: "NodeSeek"
 description: "NS 每日定时签到"
 author: "Nullwhy"
 icon: "https://raw.githubusercontent.com/Nullwhy/Egern/main/Icon/Nullwhy.png"
 
 compat_arguments:
-  # 注意：不要用数字 0；用字符串 "00"，避免替换后变空
-  MINUTE: "00"
-  HOUR: "10"
+  # 完整 5 段 cron，默认每天 10:00
+  CRON: "0 10 * * *"
   ENABLE_CAPTURE: "false"
 
 env_schema:
-  MINUTE:
-    name: 分钟
-    description: 请填 00-59（两位更稳，如 00、05、30）。不要只填空。默认 00
-    default_value: "00"
-  HOUR:
-    name: 小时
-    description: 0-23，默认 10（即 10:00）。改完请 Save
-    default_value: "10"
+  CRON:
+    name: 定时 CRON
+    description: "5段：分 时 日 月 周。例 9:08 填 8 9 * * * ；10:00 填 0 10 * * *。改完 Save"
+    default_value: "0 10 * * *"
   ENABLE_CAPTURE:
     name: Cookie
     description: 默认关闭；开启后访问个人页保存 Cookie，成功后请关闭
@@ -52,8 +42,7 @@ scriptings:
 
   - schedule:
       name: "NodeSeek 签到"
-      # 与 Day60s 相同；分钟用 00 避免 0 被吃掉
-      cron: "{{{MINUTE}}} {{{HOUR}}} * * *"
+      cron: "{{{CRON}}}"
       timeout: 60
       script_url: "https://raw.githubusercontent.com/Nullwhy/Egern/main/Scripts/NodeSeek.CheckIn.js"
 
