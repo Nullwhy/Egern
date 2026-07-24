@@ -9,7 +9,7 @@ Version : v1.1.2
 1. 模块打开「Cookie」后访问个人页保存请求头
 2. 成功后关闭「Cookie」
 3. 定时由 Template Arguments 的 MINUTE / HOUR 控制
-4. 「固定鸡腿」关=随机，开=固定 5 鸡腿
+4. 「鸡腿」关=随机（默认），开=固定 5 鸡腿
 *******************************/
 
 const SCRIPT_NAME = "NodeSeek🎉";
