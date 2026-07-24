@@ -1,6 +1,6 @@
 /******************************
 脚本名称: NodeSeek 签到
-Version : v1.0.1
+Version : v1.0.2
 更新时间: 2026-07-24
 平台: Egern
 功能: 仅签到（供 schedule 使用，不与 Cookie 抓包共用入口）
@@ -42,7 +42,8 @@ function buildAttendHeaders(saved) {
 }
 
 async function main(ctx) {
-  log("定时/手动签到开始");
+  log("定时/手动签到开始 | " + new Date().toISOString());
+  log("storage key=" + STORE_KEY);
 
   const raw = await ctx.storage.get(STORE_KEY);
   if (!raw) {
