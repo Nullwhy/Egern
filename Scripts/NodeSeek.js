@@ -1,9 +1,9 @@
 /******************************
 脚本名称: NodeSeek
-Version : v1.1.0
+Version : v1.1.1
 更新时间: 2026-07-24
 平台: Egern
-功能: Cookie 捕获 + 每日签到（单文件）
+功能: Cookie 捕获 + 每日签到
 脚本作者: @Curtinp118 / @Nullwhy
 使用说明:
 1. 模块打开「Cookie」后访问个人页保存请求头
@@ -15,92 +15,80 @@ const SCRIPT_NAME = "NodeSeek🎉";
 const STORE_KEY = "nodeseek_headers";
 const ATTEND_URL = "https://www.nodeseek.com/api/attendance?random=true";
 
-const HEADER_KEYS = [
-  "Connection",
-  "Accept-Encoding",
-  "Priority",
-  "Content-Type",
-  "Origin",
-  "refract-sign",
-  "User-Agent",
-  "refract-key",
-  "Sec-Fetch-Mode",
-  "Cookie",
-  "Host",
-  "Referer",
-  "Accept-Language",
-  "Accept"
-];
+// 捕获时按此列表挑字段；签到时用同表默认值补全
+const DEFAULT_HEADERS = {
+  Connection: "keep-alive",
+  "Accept-Encoding": "gzip, deflate, br",
+  Priority: "u=3, i",
+  "Content-Type": "text/plain;charset=UTF-8",
+  Origin: "https://www.nodeseek.com",
+  "refract-sign": "",
+  "User-Agent": "Mozilla/5.0",
+  "refract-key": "",
+  "Sec-Fetch-Mode": "cors",
+  Cookie: "",
+  Host: "www.nodeseek.com",
+  Referer: "https://www.nodeseek.com/",
+  "Accept-Language": "zh-CN,zh-Hans;q=0.9",
+  Accept: "*/*"
+};
+
+const HEADER_KEYS = Object.keys(DEFAULT_HEADERS);
 
 function log(msg) {
   console.log("[" + SCRIPT_NAME + "] " + msg);
 }
 
-function envBool(env, key, def) {
-  if (!env || env[key] === undefined || env[key] === null || String(env[key]).trim() === "") {
-    return !!def;
+function notify(subtitle, body) {
+  log(subtitle + ": " + body);
+  if (typeof $notification !== "undefined" && $notification.post) {
+    $notification.post(SCRIPT_NAME, subtitle, body);
   }
-  const v = String(env[key]).trim().toLowerCase();
-  if (["1", "true", "yes", "on"].indexOf(v) !== -1) return true;
-  if (["0", "false", "no", "off"].indexOf(v) !== -1) return false;
-  return !!def;
 }
 
-function notify(title, subtitle, body) {
-  console.log("📢 " + title + " - " + subtitle + ": " + body);
-  if (typeof $notification !== "undefined" && $notification.post) {
-    $notification.post(title, subtitle, body);
-  }
+function envTrue(env, key) {
+  if (!env || env[key] == null || String(env[key]).trim() === "") return false;
+  return ["1", "true", "yes", "on"].indexOf(String(env[key]).trim().toLowerCase()) !== -1;
+}
+
+function headerValue(src, key) {
+  return src[key] || src[key.toLowerCase()] || src[key.toUpperCase()] || "";
 }
 
 function pickHeaders(src) {
   const saved = {};
   for (let i = 0; i < HEADER_KEYS.length; i++) {
     const key = HEADER_KEYS[i];
-    const value =
-      src[key] || src[key.toLowerCase()] || src[key.toUpperCase()];
+    const value = headerValue(src || {}, key);
     if (value) saved[key] = value;
   }
   return saved;
 }
 
 function buildAttendHeaders(saved) {
-  return {
-    Connection: saved.Connection || "keep-alive",
-    "Accept-Encoding": saved["Accept-Encoding"] || "gzip, deflate, br",
-    Priority: saved.Priority || "u=3, i",
-    "Content-Type": saved["Content-Type"] || "text/plain;charset=UTF-8",
-    Origin: saved.Origin || "https://www.nodeseek.com",
-    "refract-sign": saved["refract-sign"] || "",
-    "User-Agent": saved["User-Agent"] || "Mozilla/5.0",
-    "refract-key": saved["refract-key"] || "",
-    "Sec-Fetch-Mode": saved["Sec-Fetch-Mode"] || "cors",
-    Cookie: saved.Cookie || "",
-    Host: saved.Host || "www.nodeseek.com",
-    Referer: saved.Referer || "https://www.nodeseek.com/",
-    "Accept-Language": saved["Accept-Language"] || "zh-CN,zh-Hans;q=0.9",
-    Accept: saved.Accept || "*/*"
-  };
+  const headers = {};
+  for (let i = 0; i < HEADER_KEYS.length; i++) {
+    const key = HEADER_KEYS[i];
+    headers[key] = (saved && saved[key]) || DEFAULT_HEADERS[key];
+  }
+  return headers;
 }
 
 async function captureHeaders(ctx) {
-  const env = (ctx && ctx.env) || {};
-  if (!envBool(env, "ENABLE_CAPTURE", false) && !envBool(env, "CAPTURE", false)) {
+  if (!envTrue((ctx && ctx.env) || {}, "ENABLE_CAPTURE")) {
     log("Cookie 开关已关闭，跳过");
     return { response: ctx.response };
   }
 
-  log("开始保存 Cookie/请求头");
-  const saved = pickHeaders(ctx.request.headers || {});
+  const saved = pickHeaders((ctx.request && ctx.request.headers) || {});
   if (Object.keys(saved).length === 0) {
-    log("未获取到有效请求头");
-    notify(SCRIPT_NAME, "Cookie 失败", "未获取到请求头");
+    notify("Cookie 失败", "未获取到请求头");
     return { response: ctx.response };
   }
 
   await ctx.storage.set(STORE_KEY, JSON.stringify(saved));
   log("请求头已保存，共 " + Object.keys(saved).length + " 个字段");
-  notify(SCRIPT_NAME, "Cookie 成功", "请求头已保存，请关闭模块「Cookie」开关");
+  notify("Cookie 成功", "请求头已保存，请关闭模块「Cookie」开关");
   return { response: ctx.response };
 }
 
@@ -109,76 +97,56 @@ async function doCheckIn(ctx) {
 
   const raw = await ctx.storage.get(STORE_KEY);
   if (!raw) {
-    log("未找到请求头");
-    notify(SCRIPT_NAME, "缺少请求头", "请先打开 Cookie 并访问个人页面");
+    notify("缺少请求头", "请先打开 Cookie 并访问个人页面");
     return;
   }
 
-  let savedHeaders;
+  let saved;
   try {
-    savedHeaders = JSON.parse(raw);
+    saved = JSON.parse(raw);
   } catch (e) {
-    log("请求头解析失败");
-    notify(SCRIPT_NAME, "数据异常", "请重新打开 Cookie 并访问个人页面");
+    notify("数据异常", "请重新打开 Cookie 并访问个人页面");
     return;
   }
 
   try {
     const response = await ctx.http.post(ATTEND_URL, {
-      headers: buildAttendHeaders(savedHeaders),
+      headers: buildAttendHeaders(saved),
       body: "",
       timeout: 10000
     });
-
     const status = response.status;
-    const body = await response.text();
+    const text = await response.text();
     let message = "";
     try {
-      message = (JSON.parse(body) || {}).message || "";
+      message = (JSON.parse(text) || {}).message || "";
     } catch (e) {}
 
     if (status === 403) {
-      log("签到失败: 403 风控");
-      notify(SCRIPT_NAME, "被风控", "403，稍后重试");
+      notify("被风控", "403，稍后重试");
     } else if (status === 500) {
-      log("签到失败: 500");
-      notify(SCRIPT_NAME, "服务器错误", "500");
+      notify("服务器错误", "500");
     } else if (status >= 200 && status < 300) {
-      log("签到成功" + (message ? ": " + message : ""));
-      notify(SCRIPT_NAME, "签到成功", message || "签到完成");
+      notify("签到成功", message || "签到完成");
     } else {
-      log("签到异常 HTTP " + status);
-      notify(SCRIPT_NAME, "请求异常", "HTTP " + status);
+      notify("请求异常", "HTTP " + status);
     }
   } catch (error) {
-    log("网络错误: " + (error && error.message ? error.message : error));
-    notify(SCRIPT_NAME, "网络错误", "请检查网络连接");
+    notify("网络错误", "请检查网络连接");
+    log(error && error.message ? error.message : String(error));
   }
 }
 
 async function main(ctx) {
   const env = (ctx && ctx.env) || {};
-  const mode = String(env.MODE || "").toLowerCase();
-
-  // schedule / 手动签到：明确 MODE=checkin
-  if (mode === "checkin" || mode === "sign" || mode === "attend") {
-    log("签到入口 MODE=" + mode);
+  // schedule 模块固定 MODE=checkin；无 request 也走签到
+  if (String(env.MODE || "").toLowerCase() === "checkin") {
     await doCheckIn(ctx);
     return;
   }
-
-  // http_response：有 request 才走 Cookie
-  const hasRequest = !!(
-    ctx &&
-    ctx.request &&
-    (ctx.request.url || ctx.request.headers)
-  );
-  if (hasRequest) {
+  if (ctx && ctx.request && (ctx.request.url || ctx.request.headers)) {
     return await captureHeaders(ctx);
   }
-
-  // 兜底：无 request 当签到（兼容未传 MODE 的 schedule）
-  log("签到入口（无 request 兜底）");
   await doCheckIn(ctx);
 }
 
