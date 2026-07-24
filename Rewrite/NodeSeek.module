@@ -1,13 +1,5 @@
-# NodeSeek — Egern 模块
-#
-# 签到时间：只在 Template Arguments 里改 MINUTE / HOUR（不要再用外面的时间输入框）
-# 例：9:08 → MINUTE=08  HOUR=9
-#     10:00 → MINUTE=00  HOUR=10
-# 分钟建议两位 00/05/08；改完 Done → Save
-# 到 脚本→NodeSeek 签到 确认 cron 为「分 时 * * *」
-# 保持 VPN 开启
-#
-# 脚本：Scripts/NodeSeek.js 单文件（Cookie 捕获 + 签到）
+# NodeSeek — Cookie 捕获 + 定时签到
+# 时间只改 Template Arguments：MINUTE / HOUR
 name: "NodeSeek"
 description: "每天定时自动签到"
 author: "Nullwhy"
@@ -23,7 +15,7 @@ compat_arguments_desc: |
   HOUR=时
   ENABLE_CAPTURE=Cookie 捕获（true 开 / false 关）
 
-# 仅保留 Cookie 开关；时间不放 env_schema，避免再生成「设定 cron」输入框
+# 仅 Cookie 开关；时间不进 env_schema，避免多余 cron 输入框
 env_schema:
   ENABLE_CAPTURE:
     name: Cookie
