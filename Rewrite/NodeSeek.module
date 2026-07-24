@@ -1,13 +1,10 @@
 # NodeSeek — Egern 模块
 #
-# 【自定义时间 — 方式B 修复版】
-# Egern 模块对 schedule.cron 的 {{{参数}}} 在你设备上不可靠。
-# 现改为：
-#   1) schedule 每分钟触发一次（写死 cron: 0-59 每分）
-#   2) 脚本读取 env.HOUR / env.MINUTE，到点才真正签到
-# 请改 Template Arguments 的 HOUR、MINUTE 后 Save。
-# 例：9:08 → HOUR=9  MINUTE=08
-# 须保持 VPN 开启；手动签到请用「NodeSeek 手动签到」（FORCE=true）
+# 自定义时间：改 Template Arguments 的 MINUTE + HOUR（两处若有表单请填一致）
+# 例 9:08 → MINUTE=08  HOUR=9
+# 分钟用两位 00/08/30，不要只写 0
+# 改完 Save；脚本「NodeSeek 签到」里 cron 应变成「分 时 * * *」
+# 保持 VPN 开启。已取消每分钟轮询。
 name: "NodeSeek"
 description: "NS 每日定时签到"
 author: "Nullwhy"
@@ -19,18 +16,18 @@ compat_arguments:
   ENABLE_CAPTURE: "false"
 
 compat_arguments_desc: |
-  签到时间：修改 Template Arguments 的 HOUR（时）和 MINUTE（分）。
-  例 9:08 → HOUR=9，MINUTE=08；10:00 → HOUR=10，MINUTE=00。
-  分钟建议两位。改完 Done → Save。保持 VPN 开启。
+  签到时间：Template Arguments 中 MINUTE（分）与 HOUR（时）须与设置框一致。
+  例 9:08 → MINUTE=08，HOUR=9；10:00 → MINUTE=00，HOUR=10。
+  改完 Done → Save。到脚本详情确认 cron 为「分 时 * * *」。
 
 env_schema:
   MINUTE:
     name: 分钟
-    description: 签到分钟 00-59（建议两位）
+    description: 建议两位 00-59。例 9:08 填 08
     default_value: "00"
   HOUR:
     name: 小时
-    description: 签到小时 0-23
+    description: 0-23。例 9:08 填 9。须与 Template Arguments 一致
     default_value: "10"
   ENABLE_CAPTURE:
     name: Cookie
@@ -55,19 +52,9 @@ scriptings:
       env:
         ENABLE_CAPTURE: "{{{ENABLE_CAPTURE}}}"
 
-  # 每分钟唤醒；是否签到由脚本按 HOUR/MINUTE 判断
+  # 每天只触发一次：分 时 日 月 周（不再每分钟轮询）
   - schedule:
       name: "NodeSeek 签到"
-      cron: "* * * * *"
+      cron: "{{{MINUTE}}} {{{HOUR}}} * * *"
       timeout: 60
       script_url: "https://raw.githubusercontent.com/Nullwhy/Egern/main/Scripts/NodeSeek.CheckIn.js"
-      env:
-        HOUR: "{{{HOUR}}}"
-        MINUTE: "{{{MINUTE}}}"
-
-  - generic:
-      name: "NodeSeek 手动签到"
-      timeout: 60
-      script_url: "https://raw.githubusercontent.com/Nullwhy/Egern/main/Scripts/NodeSeek.CheckIn.js"
-      env:
-        FORCE: "true"
