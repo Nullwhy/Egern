@@ -51,8 +51,3 @@ scriptings:
       cron: "{{{MINUTE}}} {{{HOUR}}} * * *"
       timeout: 60
       script_url: "https://raw.githubusercontent.com/Nullwhy/Egern/main/Scripts/NodeSeek.CheckIn.js"
-
-  - generic:
-      name: "NodeSeek 手动签到"
-      timeout: 60
-      script_url: "https://raw.githubusercontent.com/Nullwhy/Egern/main/Scripts/NodeSeek.CheckIn.js"
