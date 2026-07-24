@@ -1,15 +1,18 @@
 /******************************
 脚本名称: NodeSeek
-Version : v1.0.7
-更新时间: 2026-07-23
+Version : v1.1.0
+更新时间: 2026-07-24
 平台: Egern
-功能: NodeSeek 每日签到
+功能: Cookie 捕获 + 每日签到（单文件）
 脚本作者: @Curtinp118 / @Nullwhy
 使用说明:
 1. 模块打开「Cookie」后访问个人页保存请求头
 2. 成功后关闭「Cookie」
-3. 定时或手动运行签到
+3. 定时由 Template Arguments 的 MINUTE / HOUR 控制
 4. 定时需 Egern VPN 保持连接（不必打开界面；杀进程则不会跑）
+入口:
+- http_response + Cookie 开 → 保存请求头
+- schedule / MODE=checkin → 签到
 *******************************/
 
 const SCRIPT_NAME = "NodeSeek🎉";
@@ -159,13 +162,16 @@ async function doCheckIn(ctx) {
 
 async function main(ctx) {
   const env = (ctx && ctx.env) || {};
-  // 模块可强制 MODE=checkin（定时/手动签到）
-  if (String(env.MODE || "").toLowerCase() === "checkin") {
-    log("签到入口 MODE=checkin");
+  const mode = String(env.MODE || "").toLowerCase();
+
+  // schedule / 手动签到：明确 MODE=checkin
+  if (mode === "checkin" || mode === "sign" || mode === "attend") {
+    log("签到入口 MODE=" + mode);
     await doCheckIn(ctx);
     return;
   }
-  // http_response：有完整 request 才走 Cookie
+
+  // http_response：有 request 才走 Cookie
   const hasRequest = !!(
     ctx &&
     ctx.request &&
@@ -174,7 +180,9 @@ async function main(ctx) {
   if (hasRequest) {
     return await captureHeaders(ctx);
   }
-  log("签到入口（schedule/generic）");
+
+  // 兜底：无 request 当签到（兼容未传 MODE 的 schedule）
+  log("签到入口（无 request 兜底）");
   await doCheckIn(ctx);
 }
 
