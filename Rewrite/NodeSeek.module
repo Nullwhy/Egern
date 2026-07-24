@@ -19,10 +19,9 @@ compat_arguments:
   ENABLE_CAPTURE: "false"
 
 compat_arguments_desc: |
-  签到时间只改本页 Template Arguments：
-  MINUTE=分钟（建议 00/08/30），HOUR=小时（0-23）。
-  例 9:08 → MINUTE=08，HOUR=9。
-  改完 Done → Save。外面不再提供时间输入框，避免两套不同步。
+  MINUTE=分
+  HOUR=时
+  ENABLE_CAPTURE=Cookie 捕获（true 开 / false 关）
 
 # 仅保留 Cookie 开关；时间不放 env_schema，避免再生成「设定 cron」输入框
 env_schema:
