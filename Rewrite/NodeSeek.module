@@ -1,31 +1,20 @@
 # NodeSeek — Egern 模块
-# 改定时：必须改「Template Arguments / 模板参数」里的 CRON，然后 Save
-# 只改外面输入框、不同步到 Template Arguments 时，实际仍是默认 0 10 * * *
+#
+# 【定时说明】
+# 不使用 {{{CRON}}} 参数替换（你这边改了 Template Arguments 仍不触发）。
+# 签到时间写死在下面 schedule.cron（与主配置直接写 cron 相同）。
+# 默认：每天 10:00 → 0 10 * * *
+# 若要 9:08：把 cron 改成 8 9 * * * 后更新模块（或改仓库后点模块更新）。
+# 手动能签 = Cookie/脚本正常；到点需 Egern VPN 保持开启。
 name: "NodeSeek"
 description: "NS 每日定时签到"
 author: "Nullwhy"
 icon: "https://raw.githubusercontent.com/Nullwhy/Egern/main/Icon/Nullwhy.png"
 
 compat_arguments:
-  # 实际生效的 cron（分 时 日 月 周）。请在模块 Template Arguments 里修改 CRON
-  CRON: "0 10 * * *"
   ENABLE_CAPTURE: "false"
 
-compat_arguments_desc: |
-  【定时必看】
-  请点「Edit Template Argument / 编辑模板参数」修改 CRON，再点 Save。
-  格式：分 时 日 月 周（5段，空格分隔）
-  例：9:08 → 8 9 * * *
-      10:00 → 0 10 * * *
-      10:55 → 55 10 * * *
-  改完后到脚本「NodeSeek 签到」详情确认 cron 已变成数字，不是 {{{CRON}}}。
-  Cookie：默认关；开启后访问个人页保存请求头，成功后请关闭。
-
 env_schema:
-  CRON:
-    name: 定时 CRON
-    description: "务必同步到 Template Arguments。5段：分 时 日 月 周。例 55 10 * * * = 每天10:55"
-    default_value: "0 10 * * *"
   ENABLE_CAPTURE:
     name: Cookie
     description: 默认关闭；开启后访问个人页保存 Cookie，成功后请关闭
@@ -49,9 +38,11 @@ scriptings:
       env:
         ENABLE_CAPTURE: "{{{ENABLE_CAPTURE}}}"
 
+  # 写死 cron，不做模板替换（避免参数界面与真实 schedule 不一致）
+  # 分 时 日 月 周 —— 改时间请改这一行后更新模块
   - schedule:
       name: "NodeSeek 签到"
-      cron: "{{{CRON}}}"
+      cron: "0 10 * * *"
       timeout: 60
       script_url: "https://raw.githubusercontent.com/Nullwhy/Egern/main/Scripts/NodeSeek.CheckIn.js"
 
