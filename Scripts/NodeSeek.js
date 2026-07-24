@@ -1,6 +1,6 @@
 /******************************
 脚本名称: NodeSeek
-Version : v1.1.1
+Version : v1.1.2
 更新时间: 2026-07-24
 平台: Egern
 功能: Cookie 捕获 + 每日签到
@@ -9,11 +9,12 @@ Version : v1.1.1
 1. 模块打开「Cookie」后访问个人页保存请求头
 2. 成功后关闭「Cookie」
 3. 定时由 Template Arguments 的 MINUTE / HOUR 控制
+4. 「固定鸡腿」关=随机，开=固定 5 鸡腿
 *******************************/
 
 const SCRIPT_NAME = "NodeSeek🎉";
 const STORE_KEY = "nodeseek_headers";
-const ATTEND_URL = "https://www.nodeseek.com/api/attendance?random=true";
+const ATTEND_BASE = "https://www.nodeseek.com/api/attendance";
 
 // 捕获时按此列表挑字段；签到时用同表默认值补全
 const DEFAULT_HEADERS = {
@@ -74,6 +75,12 @@ function buildAttendHeaders(saved) {
   return headers;
 }
 
+// 关=随机 random=true；开=固定 random=false
+function attendUrl(env) {
+  const fixed = envTrue(env, "FIXED_LEGS");
+  return ATTEND_BASE + "?random=" + (fixed ? "false" : "true");
+}
+
 async function captureHeaders(ctx) {
   if (!envTrue((ctx && ctx.env) || {}, "ENABLE_CAPTURE")) {
     log("Cookie 开关已关闭，跳过");
@@ -93,7 +100,10 @@ async function captureHeaders(ctx) {
 }
 
 async function doCheckIn(ctx) {
-  log("开始执行签到任务");
+  const env = (ctx && ctx.env) || {};
+  const fixed = envTrue(env, "FIXED_LEGS");
+  const url = attendUrl(env);
+  log("开始执行签到任务（" + (fixed ? "固定鸡腿" : "随机鸡腿") + "）");
 
   const raw = await ctx.storage.get(STORE_KEY);
   if (!raw) {
@@ -110,7 +120,7 @@ async function doCheckIn(ctx) {
   }
 
   try {
-    const response = await ctx.http.post(ATTEND_URL, {
+    const response = await ctx.http.post(url, {
       headers: buildAttendHeaders(saved),
       body: "",
       timeout: 10000
@@ -122,12 +132,13 @@ async function doCheckIn(ctx) {
       message = (JSON.parse(text) || {}).message || "";
     } catch (e) {}
 
+    const modeTag = fixed ? "固定" : "随机";
     if (status === 403) {
       notify("被风控", "403，稍后重试");
     } else if (status === 500) {
       notify("服务器错误", "500");
     } else if (status >= 200 && status < 300) {
-      notify("签到成功", message || "签到完成");
+      notify("签到成功（" + modeTag + "）", message || "签到完成");
     } else {
       notify("请求异常", "HTTP " + status);
     }
@@ -139,7 +150,6 @@ async function doCheckIn(ctx) {
 
 async function main(ctx) {
   const env = (ctx && ctx.env) || {};
-  // schedule 模块固定 MODE=checkin；无 request 也走签到
   if (String(env.MODE || "").toLowerCase() === "checkin") {
     await doCheckIn(ctx);
     return;
