@@ -1,12 +1,13 @@
 # NodeSeek — Egern 模块
 # 1. 开 Cookie → 访问个人页 → 成功后关 Cookie
-# 2. 定时签到（默认可改）
+# 2. 到点自动签到（改小时/分钟后请保存并更新模块）
 name: "NodeSeek"
 description: "NS 每日定时签到"
 author: "Nullwhy"
 icon: "https://raw.githubusercontent.com/Nullwhy/Egern/main/Icon/Nullwhy.png"
 
 compat_arguments:
+  # 必须用字符串，避免 0 被 YAML 收成数字导致 cron 替换异常
   MINUTE: "0"
   HOUR: "10"
   ENABLE_CAPTURE: "false"
@@ -14,11 +15,11 @@ compat_arguments:
 env_schema:
   MINUTE:
     name: 分钟
-    description: 每天签到的分钟（0-59），默认 0
+    description: 每天签到的分钟（0-59），默认 0。修改后请保存模块
     default_value: "0"
   HOUR:
     name: 小时
-    description: 每天签到的小时（0-23），默认 10
+    description: 每天签到的小时（0-23），默认 10。修改后请保存模块
     default_value: "10"
   ENABLE_CAPTURE:
     name: Cookie
@@ -43,8 +44,13 @@ scriptings:
       env:
         ENABLE_CAPTURE: "{{{ENABLE_CAPTURE}}}"
 
+  # 与 Day60s 相同：分 时 日 月 周，* 写死，数字用参数
   - schedule:
       name: "NodeSeek 签到"
       cron: "{{{MINUTE}}} {{{HOUR}}} * * *"
       timeout: 60
+      update_interval: 86400
       script_url: "https://raw.githubusercontent.com/Nullwhy/Egern/main/Scripts/NodeSeek.js"
+      env:
+        # 签到任务强制关闭抓包分支相关开关（避免误判）
+        ENABLE_CAPTURE: "false"
