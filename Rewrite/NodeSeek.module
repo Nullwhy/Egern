@@ -1,8 +1,19 @@
 # NodeSeek — Egern 模块
-# 自定义定时：改「小时」「分钟」（与 Day60s 相同，5 段 cron）
-# 例：9:08 → 分钟 08、小时 9    10:00 → 分钟 00、小时 10
-# 分钟请用两位（00/05/08），不要只写 0
-# 改完必须 Save；保持 Egern VPN 开启（可退后台）
+#
+# 【自定义定时 — 必读】
+# 真正生效的是 Template Arguments（模板参数）里的 MINUTE / HOUR。
+# 请点「Edit Template Argument」修改，再 Save。
+# 不要只改其它输入框（可能不同步，仍跑默认 10:00）。
+#
+# 写法（与 Day60s 相同，5 段：分 时 日 月 周）：
+#   分钟 MINUTE：建议两位 00/05/08/30（不要只写 0）
+#   小时 HOUR：0-23
+# 例：9:08 → MINUTE=08  HOUR=9
+#     10:00 → MINUTE=00  HOUR=10
+#     10:55 → MINUTE=55  HOUR=10
+#
+# 改完后请到 脚本 →「NodeSeek 签到」确认 cron 已是数字（如 55 10 * * *）
+# 保持 Egern VPN 开启（可退后台，勿杀进程）
 name: "NodeSeek"
 description: "NS 每日定时签到"
 author: "Nullwhy"
@@ -13,15 +24,13 @@ compat_arguments:
   HOUR: "10"
   ENABLE_CAPTURE: "false"
 
+compat_arguments_desc: |
+  自定义签到时间：只改本页 Template Arguments 的 MINUTE（分）和 HOUR（时）。
+  例 9:08 → MINUTE=08，HOUR=9；10:00 → MINUTE=00，HOUR=10。
+  改完 Done → Save。再到脚本「NodeSeek 签到」核对 cron 是否变成「分 时 * * *」。
+
+# 时间只放在 compat_arguments，避免 env_schema 再生成一套不同步的输入框
 env_schema:
-  MINUTE:
-    name: 分钟
-    description: "0-59，建议两位：00、08、30。例 9:08 填 08"
-    default_value: "00"
-  HOUR:
-    name: 小时
-    description: "0-23。例 9:08 填 9；10:00 填 10。改完 Save"
-    default_value: "10"
   ENABLE_CAPTURE:
     name: Cookie
     description: 默认关闭；开启后访问个人页保存 Cookie，成功后请关闭
@@ -45,9 +54,9 @@ scriptings:
       env:
         ENABLE_CAPTURE: "{{{ENABLE_CAPTURE}}}"
 
-  # 自定义：分 时 日 月 周（与 Day60s 相同写法）
   - schedule:
       name: "NodeSeek 签到"
+      # 分 时 日 月 周 —— 值来自 Template Arguments 的 MINUTE / HOUR
       cron: "{{{MINUTE}}} {{{HOUR}}} * * *"
       timeout: 60
       script_url: "https://raw.githubusercontent.com/Nullwhy/Egern/main/Scripts/NodeSeek.CheckIn.js"
