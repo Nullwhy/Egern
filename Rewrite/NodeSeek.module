@@ -1,7 +1,14 @@
 # NodeSeek — Egern 模块
-# 手动可签到、定时不跑时：已改为 6 字段 cron（秒 分 时 日 月 周）
-# 1. Cookie 开 → 个人页 → 关 Cookie
-# 2. 到点签到；也可手动跑「NodeSeek 签到」
+# 定时写法与 Day60s 一致（5 字段：分 时 日 月 周）
+#
+# 重要：iOS 上 schedule 依赖 Egern 进程（一般=VPN 已连接）。
+# 不必一直开着 App 界面，但完全杀掉 Egern / 关掉 VPN 后定时不会跑。
+# 手动能签、定时不签：先确认 VPN 常开，再更新本模块。
+#
+# 使用：
+# 1. Cookie 开 → 访问个人页 → 关 Cookie
+# 2. 设好小时/分钟并 Save
+# 3. 保持 Egern VPN 开启（可退到后台）
 name: "NodeSeek"
 description: "NS 每日定时签到"
 author: "Nullwhy"
@@ -44,17 +51,16 @@ scriptings:
       env:
         ENABLE_CAPTURE: "{{{ENABLE_CAPTURE}}}"
 
-  # 6 字段：秒 分 时 日 月 周（部分 Egern 版本对 schedule 更稳）
+  # 与 Day60s 相同 5 字段 cron（你这边 Day60s 定时可用）
   - schedule:
       name: "NodeSeek 签到"
-      cron: "0 {{{MINUTE}}} {{{HOUR}}} * * *"
+      cron: "{{{MINUTE}}} {{{HOUR}}} * * *"
       timeout: 60
       script_url: "https://raw.githubusercontent.com/Nullwhy/Egern/main/Scripts/NodeSeek.js"
       env:
         ENABLE_CAPTURE: "false"
         MODE: "checkin"
 
-  # 手动入口（不依赖 cron）
   - generic:
       name: "NodeSeek 手动签到"
       timeout: 60
