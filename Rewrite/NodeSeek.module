@@ -8,27 +8,27 @@ icon: "https://raw.githubusercontent.com/Nullwhy/Egern/main/Icon/Nullwhy.png"
 compat_arguments:
   MINUTE: "00"
   HOUR: "10"
-  ENABLE_CAPTURE: "false"
   FIXED_LEGS: "false"
+  ENABLE_CAPTURE: "false"
 
 compat_arguments_desc: |
   MINUTE=分
   HOUR=时
+  FIXED_LEGS=鸡腿（false=随机 / true=固定5，默认随机）
   ENABLE_CAPTURE=Cookie 捕获（true 开 / false 关）
-  FIXED_LEGS=固定鸡腿（false=随机 / true=固定5）
 
-# Cookie / 固定鸡腿；时间不进 env_schema
+# 鸡腿 / Cookie；时间不进 env_schema
 env_schema:
-  ENABLE_CAPTURE:
-    name: Cookie
-    description: 默认关闭；开启后访问个人页保存 Cookie，成功后请关闭
+  FIXED_LEGS:
+    name: 鸡腿
+    description: 默认随机鸡腿；开启=固定 5 鸡腿
     default_value: "false"
     options:
       - "false"
       - "true"
-  FIXED_LEGS:
-    name: 固定鸡腿
-    description: 关闭=随机鸡腿；开启=固定 5 鸡腿
+  ENABLE_CAPTURE:
+    name: Cookie
+    description: 默认关闭；开启后访问个人页保存 Cookie，成功后请关闭
     default_value: "false"
     options:
       - "false"
