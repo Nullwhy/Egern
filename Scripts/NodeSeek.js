@@ -9,10 +9,6 @@ Version : v1.1.0
 1. 模块打开「Cookie」后访问个人页保存请求头
 2. 成功后关闭「Cookie」
 3. 定时由 Template Arguments 的 MINUTE / HOUR 控制
-4. 定时需 Egern VPN 保持连接（不必打开界面；杀进程则不会跑）
-入口:
-- http_response + Cookie 开 → 保存请求头
-- schedule / MODE=checkin → 签到
 *******************************/
 
 const SCRIPT_NAME = "NodeSeek🎉";
