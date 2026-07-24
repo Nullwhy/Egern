@@ -1,10 +1,11 @@
 # NodeSeek — Egern 模块
 #
-# 自定义时间：改 Template Arguments 的 MINUTE + HOUR（两处若有表单请填一致）
-# 例 9:08 → MINUTE=08  HOUR=9
-# 分钟用两位 00/08/30，不要只写 0
-# 改完 Save；脚本「NodeSeek 签到」里 cron 应变成「分 时 * * *」
-# 保持 VPN 开启。已取消每分钟轮询。
+# 签到时间：只在 Template Arguments 里改 MINUTE / HOUR（不要再用外面的时间输入框）
+# 例：9:08 → MINUTE=08  HOUR=9
+#     10:00 → MINUTE=00  HOUR=10
+# 分钟建议两位 00/05/08；改完 Done → Save
+# 到 脚本→NodeSeek 签到 确认 cron 为「分 时 * * *」
+# 保持 VPN 开启
 name: "NodeSeek"
 description: "NS 每日定时签到"
 author: "Nullwhy"
@@ -16,19 +17,13 @@ compat_arguments:
   ENABLE_CAPTURE: "false"
 
 compat_arguments_desc: |
-  签到时间：Template Arguments 中 MINUTE（分）与 HOUR（时）须与设置框一致。
-  例 9:08 → MINUTE=08，HOUR=9；10:00 → MINUTE=00，HOUR=10。
-  改完 Done → Save。到脚本详情确认 cron 为「分 时 * * *」。
+  签到时间只改本页 Template Arguments：
+  MINUTE=分钟（建议 00/08/30），HOUR=小时（0-23）。
+  例 9:08 → MINUTE=08，HOUR=9。
+  改完 Done → Save。外面不再提供时间输入框，避免两套不同步。
 
+# 仅保留 Cookie 开关；时间不放 env_schema，避免再生成「设定 cron」输入框
 env_schema:
-  MINUTE:
-    name: 分钟
-    description: 建议两位 00-59。例 9:08 填 08
-    default_value: "00"
-  HOUR:
-    name: 小时
-    description: 0-23。例 9:08 填 9。须与 Template Arguments 一致
-    default_value: "10"
   ENABLE_CAPTURE:
     name: Cookie
     description: 默认关闭；开启后访问个人页保存 Cookie，成功后请关闭
@@ -52,7 +47,6 @@ scriptings:
       env:
         ENABLE_CAPTURE: "{{{ENABLE_CAPTURE}}}"
 
-  # 每天只触发一次：分 时 日 月 周（不再每分钟轮询）
   - schedule:
       name: "NodeSeek 签到"
       cron: "{{{MINUTE}}} {{{HOUR}}} * * *"
