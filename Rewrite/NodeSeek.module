@@ -6,6 +6,8 @@
 # 分钟建议两位 00/05/08；改完 Done → Save
 # 到 脚本→NodeSeek 签到 确认 cron 为「分 时 * * *」
 # 保持 VPN 开启
+#
+# 脚本：Scripts/NodeSeek.js 单文件（Cookie 捕获 + 签到）
 name: "NodeSeek"
 description: "NS 每日定时签到"
 author: "Nullwhy"
@@ -51,4 +53,6 @@ scriptings:
       name: "NodeSeek 签到"
       cron: "{{{MINUTE}}} {{{HOUR}}} * * *"
       timeout: 60
-      script_url: "https://raw.githubusercontent.com/Nullwhy/Egern/main/Scripts/NodeSeek.CheckIn.js"
+      script_url: "https://raw.githubusercontent.com/Nullwhy/Egern/main/Scripts/NodeSeek.js"
+      env:
+        MODE: "checkin"
