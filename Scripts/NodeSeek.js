@@ -1,6 +1,6 @@
 /******************************
 脚本名称: NodeSeek
-Version : v1.0.4
+Version : v1.0.5
 更新时间: 2026-07-23
 平台: Egern
 功能: NodeSeek 每日签到
@@ -157,9 +157,13 @@ async function doCheckIn(ctx) {
 }
 
 async function main(ctx) {
-  if (ctx && ctx.request !== undefined) {
+  // schedule / 手动运行：无 request → 签到
+  // http_response 抓包：有 request → 仅当 Cookie 开关开启才保存
+  const hasRequest = !!(ctx && ctx.request && (ctx.request.url || ctx.request.headers));
+  if (hasRequest) {
     return await captureHeaders(ctx);
   }
+  log("定时/手动签到入口");
   await doCheckIn(ctx);
 }
 
