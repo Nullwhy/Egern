@@ -9,7 +9,7 @@
 #
 # 脚本：Scripts/NodeSeek.js 单文件（Cookie 捕获 + 签到）
 name: "NodeSeek"
-description: "NS 每日定时签到"
+description: "每天定时自动签到"
 author: "Nullwhy"
 icon: "https://raw.githubusercontent.com/Nullwhy/Egern/main/Icon/Nullwhy.png"
 
