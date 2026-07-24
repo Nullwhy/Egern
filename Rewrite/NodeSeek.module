@@ -1,14 +1,6 @@
 # NodeSeek — Egern 模块
-# 定时写法与 Day60s 一致（5 字段：分 时 日 月 周）
-#
-# 重要：iOS 上 schedule 依赖 Egern 进程（一般=VPN 已连接）。
-# 不必一直开着 App 界面，但完全杀掉 Egern / 关掉 VPN 后定时不会跑。
-# 手动能签、定时不签：先确认 VPN 常开，再更新本模块。
-#
-# 使用：
-# 1. Cookie 开 → 访问个人页 → 关 Cookie
-# 2. 设好小时/分钟并 Save
-# 3. 保持 Egern VPN 开启（可退到后台）
+# 定时签到使用独立脚本 Scripts/NodeSeek.CheckIn.js（与 Cookie 抓包分离，避免 schedule 不触发）
+# 需保持 Egern VPN 连接（不必打开界面）
 name: "NodeSeek"
 description: "NS 每日定时签到"
 author: "Nullwhy"
@@ -22,11 +14,11 @@ compat_arguments:
 env_schema:
   MINUTE:
     name: 分钟
-    description: 0-59，默认 0。改完请 Save
+    description: 0-59，默认 0。改完请 Save 并确保 VPN 开启
     default_value: "0"
   HOUR:
     name: 小时
-    description: 0-23，默认 10。改完请 Save
+    description: 0-23，默认 10。改完请 Save 并确保 VPN 开启
     default_value: "10"
   ENABLE_CAPTURE:
     name: Cookie
@@ -51,20 +43,14 @@ scriptings:
       env:
         ENABLE_CAPTURE: "{{{ENABLE_CAPTURE}}}"
 
-  # 与 Day60s 相同 5 字段 cron（你这边 Day60s 定时可用）
+  # 独立签到脚本，避免与 http_response 共用入口导致 cron 不注册
   - schedule:
       name: "NodeSeek 签到"
       cron: "{{{MINUTE}}} {{{HOUR}}} * * *"
       timeout: 60
-      script_url: "https://raw.githubusercontent.com/Nullwhy/Egern/main/Scripts/NodeSeek.js"
-      env:
-        ENABLE_CAPTURE: "false"
-        MODE: "checkin"
+      script_url: "https://raw.githubusercontent.com/Nullwhy/Egern/main/Scripts/NodeSeek.CheckIn.js"
 
   - generic:
       name: "NodeSeek 手动签到"
       timeout: 60
-      script_url: "https://raw.githubusercontent.com/Nullwhy/Egern/main/Scripts/NodeSeek.js"
-      env:
-        ENABLE_CAPTURE: "false"
-        MODE: "checkin"
+      script_url: "https://raw.githubusercontent.com/Nullwhy/Egern/main/Scripts/NodeSeek.CheckIn.js"
