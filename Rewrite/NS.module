@@ -37,13 +37,11 @@ mitm:
     - www.nodeseek.com
 
 scriptings:
-  - http_response:
+  - http_request:
       name: "NodeSeek Cookie 捕获"
       match: "^https://www\\.nodeseek\\.com/api/account/getInfo/"
       script_url: "https://raw.githubusercontent.com/Nullwhy/Egern/main/Scripts/NS.js"
-      body_required: true
-      timeout: 10
-      max_size: 1048576
+      timeout: 5
       env:
         MODE: "capture"
         ENABLE_CAPTURE: "{{{ENABLE_CAPTURE}}}"
