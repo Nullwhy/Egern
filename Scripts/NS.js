@@ -1,6 +1,6 @@
 /******************************
 脚本名称: NodeSeek
-Version : v2.5.0
+Version : v2.6.0
 更新时间: 2026-09-05
 平台: Egern
 功能: Cookie 多账号定时签到
@@ -9,7 +9,8 @@ Version : v2.5.0
 const SCRIPT_NAME = "NodeSeek🎉";
 const STORE_KEY_ACCOUNTS = "nodeseek_accounts_list";
 const ATTEND_BASE = "https://www.nodeseek.com/api/attendance";
-const INTERVAL_TIME = 13 * 1000;
+const INFO_API = "https://www.nodeseek.com/api/account/getInfo/";
+const INTERVAL_TIME = 13 * 1000; 
 
 const DEFAULT_HEADERS = {
   Connection: "keep-alive",
@@ -74,24 +75,13 @@ function attendUrl(env) {
   return ATTEND_BASE + "?random=" + (fixed ? "false" : "true");
 }
 
-function getCookieIdentity(cookieStr) {
-  if (!cookieStr) return "";
-  // 1. 尝试直接从 Cookie 中的字段提取标识
-  const match = cookieStr.match(/(?:username|user|ns_name|ns_id)=([^;]+)/i);
-  if (match && match[1]) {
-    try {
-      return decodeURIComponent(match[1]);
-    } catch (e) {
-      return match[1];
-    }
-  }
-  // 2. 提取不到时计算 Hash 唯一值区分不同账号 Cookie
+function getFallbackName(cookieStr) {
   let hash = 0;
   for (let i = 0; i < cookieStr.length; i++) {
     hash = (hash << 5) - hash + cookieStr.charCodeAt(i);
     hash |= 0;
   }
-  return "Account_" + Math.abs(hash).toString(16).substring(0, 6);
+  return "账号_" + Math.abs(hash).toString(16).substring(0, 6);
 }
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -107,7 +97,28 @@ async function captureHeaders(ctx) {
       return {};
     }
 
-    const accountName = getCookieIdentity(reqHeaders.Cookie);
+    // 默认先计算一个 Hash 兜底名
+    let accountName = getFallbackName(reqHeaders.Cookie);
+
+    // 方案二：异步请求官方 API，精准获取真实的中文用户名
+    try {
+      const infoRes = await ctx.http.get(INFO_API, {
+        headers: buildAttendHeaders(reqHeaders),
+        timeout: 3000
+      });
+
+      if (infoRes && infoRes.status === 200) {
+        const resText = await infoRes.text();
+        const resJson = JSON.parse(resText);
+        if (resJson && resJson.username) {
+          accountName = resJson.username;
+        } else if (resJson && resJson.data && resJson.data.username) {
+          accountName = resJson.data.username;
+        }
+      }
+    } catch (e) {
+      log("解析真实中文用户名失败，使用哈希标识兜底: " + e.message);
+    }
 
     let accounts = [];
     const rawStore = await ctx.storage.get(STORE_KEY_ACCOUNTS);
@@ -120,12 +131,15 @@ async function captureHeaders(ctx) {
     }
 
     let accountNum = 0;
-    const index = accounts.findIndex((acc) => acc.name === accountName);
+    // 根据用户名或相同的 Cookie 进行覆盖定位
+    const index = accounts.findIndex((acc) => acc.name === accountName || acc.headers.Cookie === reqHeaders.Cookie);
 
     if (index !== -1) {
+      accounts[index].name = accountName;
       accounts[index].headers = reqHeaders;
       accounts[index].updatedAt = new Date().toLocaleString();
       accountNum = index + 1;
+      log(`更新第 ${accountNum} 个账号 [${accountName}] 的 Cookie`);
     } else {
       accounts.push({
         name: accountName,
@@ -133,12 +147,13 @@ async function captureHeaders(ctx) {
         updatedAt: new Date().toLocaleString()
       });
       accountNum = accounts.length;
+      log(`新增第 ${accountNum} 个账号 [${accountName}] 的 Cookie`);
     }
 
     await ctx.storage.set(STORE_KEY_ACCOUNTS, JSON.stringify(accounts));
-    notify(`账号 ${accountNum} Cookie 抓取成功`, `账号标识: [${accountName}]\n当前共保存 ${accounts.length} 个账号`);
+    notify(`账号 ${accountNum} Cookie 抓取成功`, `用户名: [${accountName}]\n当前共保存 ${accounts.length} 个账号`);
   } catch (err) {
-    log("抓取过程异常: " + err.message);
+    log("抓取过程捕获异常: " + err.message);
   } finally {
     return {};
   }
