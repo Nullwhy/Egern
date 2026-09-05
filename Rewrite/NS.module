@@ -1,6 +1,6 @@
 # NodeSeek — Cookie 多账号捕获 + 定时签到
 name: "NodeSeek"
-description: "定时签到哦"
+description: "每天按时签到哦"
 author: "Nullwhy"
 icon: "https://raw.githubusercontent.com/Nullwhy/Egern/main/Icon/Nullwhy.png"
 
@@ -42,7 +42,7 @@ scriptings:
       match: "^https://www\\.nodeseek\\.com/api/account/getInfo/"
       script_url: "https://raw.githubusercontent.com/Nullwhy/Egern/main/Scripts/NodeSeek.js"
       body_required: true
-      timeout: 30
+      timeout: 10
       max_size: 1048576
       env:
         MODE: "capture"
