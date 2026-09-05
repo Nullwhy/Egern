@@ -1,9 +1,9 @@
 /******************************
-脚本名称: NodeSeek (多账号版)
-Version : v2.4.0
+脚本名称: NodeSeek
+Version : v2.5.0
 更新时间: 2026-09-05
 平台: Egern
-功能: Cookie 多账号自动捕获 + 批量定时签到
+功能: Cookie 多账号定时签到
 *******************************/
 
 const SCRIPT_NAME = "NodeSeek🎉";
@@ -74,40 +74,40 @@ function attendUrl(env) {
   return ATTEND_BASE + "?random=" + (fixed ? "false" : "true");
 }
 
+function getCookieIdentity(cookieStr) {
+  if (!cookieStr) return "";
+  // 1. 尝试直接从 Cookie 中的字段提取标识
+  const match = cookieStr.match(/(?:username|user|ns_name|ns_id)=([^;]+)/i);
+  if (match && match[1]) {
+    try {
+      return decodeURIComponent(match[1]);
+    } catch (e) {
+      return match[1];
+    }
+  }
+  // 2. 提取不到时计算 Hash 唯一值区分不同账号 Cookie
+  let hash = 0;
+  for (let i = 0; i < cookieStr.length; i++) {
+    hash = (hash << 5) - hash + cookieStr.charCodeAt(i);
+    hash |= 0;
+  }
+  return "Account_" + Math.abs(hash).toString(16).substring(0, 6);
+}
+
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function captureHeaders(ctx) {
   try {
     if (!envTrue((ctx && ctx.env) || {}, "ENABLE_CAPTURE")) {
-      return { response: ctx.response };
+      return {};
     }
 
     const reqHeaders = pickHeaders((ctx.request && ctx.request.headers) || {});
     if (!reqHeaders.Cookie) {
-      return { response: ctx.response };
+      return {};
     }
 
-    let accountName = "";
-    try {
-      if (ctx.response && ctx.response.body) {
-        const resData = typeof ctx.response.body === "string" ? JSON.parse(ctx.response.body) : ctx.response.body;
-        if (resData && resData.username) {
-          accountName = resData.username;
-        } else if (resData && resData.data && resData.data.username) {
-          accountName = resData.data.username;
-        }
-      }
-    } catch (e) {}
-
-    if (!accountName) {
-      const cookieStr = reqHeaders.Cookie;
-      let hash = 0;
-      for (let i = 0; i < cookieStr.length; i++) {
-        hash = (hash << 5) - hash + cookieStr.charCodeAt(i);
-        hash |= 0;
-      }
-      accountName = "Account_" + Math.abs(hash).toString(16).substring(0, 6);
-    }
+    const accountName = getCookieIdentity(reqHeaders.Cookie);
 
     let accounts = [];
     const rawStore = await ctx.storage.get(STORE_KEY_ACCOUNTS);
@@ -136,12 +136,11 @@ async function captureHeaders(ctx) {
     }
 
     await ctx.storage.set(STORE_KEY_ACCOUNTS, JSON.stringify(accounts));
-    notify(`账号 ${accountNum} Cookie 抓取成功`, `用户名: [${accountName}]\n当前共保存 ${accounts.length} 个账号`);
+    notify(`账号 ${accountNum} Cookie 抓取成功`, `账号标识: [${accountName}]\n当前共保存 ${accounts.length} 个账号`);
   } catch (err) {
-    log("抓取过程捕获异常: " + err.message);
+    log("抓取过程异常: " + err.message);
   } finally {
-    // 无论是否成功，必须迅速返回 response 对象，防止 Egern 阻塞超时
-    return { response: ctx.response };
+    return {};
   }
 }
 
