@@ -1,6 +1,6 @@
-# NodeSeek — Cookie 多账号捕获 + 定时签到
-name: "NodeSeek (多账号版)"
-description: "支持捕获并保存多个账号 Cookie"
+# NodeSeek — Cookie 多账号 + 定时签到
+name: "NodeSeek"
+description: "定时签到"
 author: "Nullwhy"
 icon: "https://raw.githubusercontent.com/Nullwhy/Egern/main/Icon/Nullwhy.png"
 
