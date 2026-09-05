@@ -1,4 +1,4 @@
-# NodeSeek — Cookie 多账号捕获 + 定时签到
+# NodeSeek — Cookie 多账号定时签到
 name: "NodeSeek"
 description: "每天按时签到哦"
 author: "Nullwhy"
@@ -37,17 +37,18 @@ mitm:
     - www.nodeseek.com
 
 scriptings:
-  - http_request:
+  - http_response:
       name: "NodeSeek Cookie 捕获"
       match: "^https://www\\.nodeseek\\.com/api/account/getInfo/"
       script_url: "https://raw.githubusercontent.com/Nullwhy/Egern/main/Scripts/NS.js"
-      timeout: 5
+      body_required: true
+      timeout: 10
       env:
         MODE: "capture"
         ENABLE_CAPTURE: "{{{ENABLE_CAPTURE}}}"
 
   - schedule:
-      name: "NodeSeek 多账号批量签到"
+      name: "NodeSeek 多账号签到"
       cron: "{{{MINUTE}}} {{{HOUR}}} * * *"
       timeout: 180
       script_url: "https://raw.githubusercontent.com/Nullwhy/Egern/main/Scripts/NS.js"
