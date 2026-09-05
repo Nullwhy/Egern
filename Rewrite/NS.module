@@ -1,6 +1,6 @@
-# NodeSeek — Cookie 多账号 + 定时签到
+# NodeSeek — Cookie 多账号捕获 + 定时签到
 name: "NodeSeek"
-description: "定时签到"
+description: "定时签到哦"
 author: "Nullwhy"
 icon: "https://raw.githubusercontent.com/Nullwhy/Egern/main/Icon/Nullwhy.png"
 
@@ -45,6 +45,7 @@ scriptings:
       timeout: 30
       max_size: 1048576
       env:
+        MODE: "capture"
         ENABLE_CAPTURE: "{{{ENABLE_CAPTURE}}}"
 
   - schedule:
