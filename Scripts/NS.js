@@ -1,23 +1,15 @@
 /******************************
-脚本名称: NodeSeek
-Version : v2.3.0
+脚本名称: NodeSeek (多账号版)
+Version : v2.4.0
 更新时间: 2026-09-05
 平台: Egern
-功能: 定时签到
-脚本作者: @Nullwhy
-
-使用说明:
-1. 开启模块「Cookie」开关；
-2. 在浏览器/客户端中逐个登录不同账号，并刷新个人信息页；
-3. 脚本会自动识别用户名，推送“账号 1 Cookie 抓取成功”、“账号 2 Cookie 抓取成功”等提示；
-4. 全部账号捕获完成后，请务必关闭「Cookie」开关；
-5. 定时任务触发时，依次签到。
+功能: Cookie 多账号自动捕获 + 批量定时签到
 *******************************/
 
 const SCRIPT_NAME = "NodeSeek🎉";
 const STORE_KEY_ACCOUNTS = "nodeseek_accounts_list";
 const ATTEND_BASE = "https://www.nodeseek.com/api/attendance";
-const INTERVAL_TIME = 13 * 1000; // 账号间 13 秒安全间隔
+const INTERVAL_TIME = 13 * 1000;
 
 const DEFAULT_HEADERS = {
   Connection: "keep-alive",
@@ -85,80 +77,72 @@ function attendUrl(env) {
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function captureHeaders(ctx) {
-  // 校验是否开启 Cookie 捕获开关
-  if (!envTrue((ctx && ctx.env) || {}, "ENABLE_CAPTURE")) {
-    log("Cookie 捕获开关未开启，跳过捕获");
-    return { response: ctx.response };
-  }
-
-  const reqHeaders = pickHeaders((ctx.request && ctx.request.headers) || {});
-  if (!reqHeaders.Cookie) {
-    log("未识别到有效 Cookie，跳过");
-    return { response: ctx.response };
-  }
-
-  // 从接口响应体中解析用户名
-  let accountName = "";
   try {
-    if (ctx.response && ctx.response.body) {
-      const resData = typeof ctx.response.body === "string" ? JSON.parse(ctx.response.body) : ctx.response.body;
-      if (resData && resData.username) {
-        accountName = resData.username;
-      } else if (resData && resData.data && resData.data.username) {
-        accountName = resData.data.username;
+    if (!envTrue((ctx && ctx.env) || {}, "ENABLE_CAPTURE")) {
+      return { response: ctx.response };
+    }
+
+    const reqHeaders = pickHeaders((ctx.request && ctx.request.headers) || {});
+    if (!reqHeaders.Cookie) {
+      return { response: ctx.response };
+    }
+
+    let accountName = "";
+    try {
+      if (ctx.response && ctx.response.body) {
+        const resData = typeof ctx.response.body === "string" ? JSON.parse(ctx.response.body) : ctx.response.body;
+        if (resData && resData.username) {
+          accountName = resData.username;
+        } else if (resData && resData.data && resData.data.username) {
+          accountName = resData.data.username;
+        }
+      }
+    } catch (e) {}
+
+    if (!accountName) {
+      const cookieStr = reqHeaders.Cookie;
+      let hash = 0;
+      for (let i = 0; i < cookieStr.length; i++) {
+        hash = (hash << 5) - hash + cookieStr.charCodeAt(i);
+        hash |= 0;
+      }
+      accountName = "Account_" + Math.abs(hash).toString(16).substring(0, 6);
+    }
+
+    let accounts = [];
+    const rawStore = await ctx.storage.get(STORE_KEY_ACCOUNTS);
+    if (rawStore) {
+      try {
+        accounts = JSON.parse(rawStore);
+      } catch (e) {
+        accounts = [];
       }
     }
-  } catch (e) {
-    log("解析响应用户名失败: " + e.message);
-  }
 
-  // 兜底方案：计算 Cookie Hash 唯一标识
-  if (!accountName) {
-    const cookieStr = reqHeaders.Cookie;
-    let hash = 0;
-    for (let i = 0; i < cookieStr.length; i++) {
-      hash = (hash << 5) - hash + cookieStr.charCodeAt(i);
-      hash |= 0;
+    let accountNum = 0;
+    const index = accounts.findIndex((acc) => acc.name === accountName);
+
+    if (index !== -1) {
+      accounts[index].headers = reqHeaders;
+      accounts[index].updatedAt = new Date().toLocaleString();
+      accountNum = index + 1;
+    } else {
+      accounts.push({
+        name: accountName,
+        headers: reqHeaders,
+        updatedAt: new Date().toLocaleString()
+      });
+      accountNum = accounts.length;
     }
-    accountName = "Account_" + Math.abs(hash).toString(16).substring(0, 6);
+
+    await ctx.storage.set(STORE_KEY_ACCOUNTS, JSON.stringify(accounts));
+    notify(`账号 ${accountNum} Cookie 抓取成功`, `用户名: [${accountName}]\n当前共保存 ${accounts.length} 个账号`);
+  } catch (err) {
+    log("抓取过程捕获异常: " + err.message);
+  } finally {
+    // 无论是否成功，必须迅速返回 response 对象，防止 Egern 阻塞超时
+    return { response: ctx.response };
   }
-
-  let accounts = [];
-  const rawStore = await ctx.storage.get(STORE_KEY_ACCOUNTS);
-  if (rawStore) {
-    try {
-      accounts = JSON.parse(rawStore);
-    } catch (e) {
-      accounts = [];
-    }
-  }
-
-  let accountNum = 0;
-  const index = accounts.findIndex((acc) => acc.name === accountName);
-
-  if (index !== -1) {
-    // 已存在的账号进行覆盖更新
-    accounts[index].headers = reqHeaders;
-    accounts[index].updatedAt = new Date().toLocaleString();
-    accountNum = index + 1;
-    log(`更新账号 [${accountName}] (账号 ${accountNum}) 的 Cookie`);
-  } else {
-    // 新账号追加入库
-    accounts.push({
-      name: accountName,
-      headers: reqHeaders,
-      updatedAt: new Date().toLocaleString()
-    });
-    accountNum = accounts.length;
-    log(`新增账号 [${accountName}] (账号 ${accountNum}) 的 Cookie`);
-  }
-
-  await ctx.storage.set(STORE_KEY_ACCOUNTS, JSON.stringify(accounts));
-
-  // 1. 推送显示：账号 X cookie 抓取成功
-  notify(`账号 ${accountNum} Cookie 抓取成功`, `用户名: [${accountName}]\n当前共保存 ${accounts.length} 个账号`);
-
-  return { response: ctx.response };
 }
 
 async function doCheckIn(ctx) {
@@ -235,7 +219,6 @@ async function main(ctx) {
   const env = (ctx && ctx.env) || {};
   const mode = String(env.MODE || "").toLowerCase();
 
-  // 2. 严格按 MODE 进行逻辑隔离，拦截时只做 capture，绝对不会误触 doCheckIn
   if (mode === "capture") {
     return await captureHeaders(ctx);
   }
