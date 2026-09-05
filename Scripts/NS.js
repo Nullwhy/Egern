@@ -1,6 +1,6 @@
 /******************************
 脚本名称: NodeSeek
-Version : v2.6.0
+Version : v2.8.0
 更新时间: 2026-09-05
 平台: Egern
 功能: Cookie 多账号定时签到
@@ -9,8 +9,7 @@ Version : v2.6.0
 const SCRIPT_NAME = "NodeSeek🎉";
 const STORE_KEY_ACCOUNTS = "nodeseek_accounts_list";
 const ATTEND_BASE = "https://www.nodeseek.com/api/attendance";
-const INFO_API = "https://www.nodeseek.com/api/account/getInfo/";
-const INTERVAL_TIME = 13 * 1000; 
+const INTERVAL_TIME = 13 * 1000;
 
 const DEFAULT_HEADERS = {
   Connection: "keep-alive",
@@ -89,35 +88,39 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 async function captureHeaders(ctx) {
   try {
     if (!envTrue((ctx && ctx.env) || {}, "ENABLE_CAPTURE")) {
-      return {};
+      return { response: ctx.response };
     }
 
     const reqHeaders = pickHeaders((ctx.request && ctx.request.headers) || {});
     if (!reqHeaders.Cookie) {
-      return {};
+      return { response: ctx.response };
     }
 
-    // 默认先计算一个 Hash 兜底名
-    let accountName = getFallbackName(reqHeaders.Cookie);
+    let accountName = "";
 
-    // 方案二：异步请求官方 API，精准获取真实的中文用户名
+    // 1. 直接解析浏览器返回的真实响应体结构
     try {
-      const infoRes = await ctx.http.get(INFO_API, {
-        headers: buildAttendHeaders(reqHeaders),
-        timeout: 3000
-      });
-
-      if (infoRes && infoRes.status === 200) {
-        const resText = await infoRes.text();
-        const resJson = JSON.parse(resText);
-        if (resJson && resJson.username) {
-          accountName = resJson.username;
-        } else if (resJson && resJson.data && resJson.data.username) {
-          accountName = resJson.data.username;
+      if (ctx.response && ctx.response.body) {
+        let resData = ctx.response.body;
+        if (typeof resData === "string") {
+          resData = JSON.parse(resData);
+        }
+        // 解析 NodeSeek 返回的用户名字段
+        if (resData && resData.username) {
+          accountName = resData.username;
+        } else if (resData && resData.data && resData.data.username) {
+          accountName = resData.data.username;
+        } else if (resData && resData.detail && resData.detail.username) {
+          accountName = resData.detail.username;
         }
       }
     } catch (e) {
-      log("解析真实中文用户名失败，使用哈希标识兜底: " + e.message);
+      log("解析响应体 JSON 失败: " + e.message);
+    }
+
+    // 2. 解析失败时回退到哈希计算
+    if (!accountName) {
+      accountName = getFallbackName(reqHeaders.Cookie);
     }
 
     let accounts = [];
@@ -130,16 +133,16 @@ async function captureHeaders(ctx) {
       }
     }
 
+    // 3. 根据准确的中文用户名去重覆盖
     let accountNum = 0;
-    // 根据用户名或相同的 Cookie 进行覆盖定位
-    const index = accounts.findIndex((acc) => acc.name === accountName || acc.headers.Cookie === reqHeaders.Cookie);
+    const index = accounts.findIndex((acc) => acc.name === accountName);
 
     if (index !== -1) {
       accounts[index].name = accountName;
-      accounts[index].headers = reqHeaders;
+      accounts[index].headers = reqHeaders; // 随时更新为最新的 Cookie 凭证
       accounts[index].updatedAt = new Date().toLocaleString();
       accountNum = index + 1;
-      log(`更新第 ${accountNum} 个账号 [${accountName}] 的 Cookie`);
+      log(`更新已有账号 [${accountName}] (账号 ${accountNum}) 的 Cookie`);
     } else {
       accounts.push({
         name: accountName,
@@ -147,7 +150,7 @@ async function captureHeaders(ctx) {
         updatedAt: new Date().toLocaleString()
       });
       accountNum = accounts.length;
-      log(`新增第 ${accountNum} 个账号 [${accountName}] 的 Cookie`);
+      log(`新增账号 [${accountName}] (账号 ${accountNum}) 的 Cookie`);
     }
 
     await ctx.storage.set(STORE_KEY_ACCOUNTS, JSON.stringify(accounts));
@@ -155,7 +158,7 @@ async function captureHeaders(ctx) {
   } catch (err) {
     log("抓取过程捕获异常: " + err.message);
   } finally {
-    return {};
+    return { response: ctx.response };
   }
 }
 
@@ -226,7 +229,7 @@ async function doCheckIn(ctx) {
   }
 
   const modeTag = fixed ? "固定" : "随机";
-  notify(`批量签到完成 (${modeTag})`, results.join("\n"));
+  notify(`签到完成 🎁(${modeTag})`, results.join("\n"));
 }
 
 async function main(ctx) {
