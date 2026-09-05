@@ -1,0 +1,57 @@
+# NodeSeek — Cookie 多账号捕获 + 定时签到
+name: "NodeSeek (多账号版)"
+description: "支持捕获并保存多个账号 Cookie"
+author: "Nullwhy"
+icon: "https://raw.githubusercontent.com/Nullwhy/Egern/main/Icon/Nullwhy.png"
+
+compat_arguments:
+  MINUTE: "00"
+  HOUR: "10"
+  FIXED_LEGS: "false"
+  ENABLE_CAPTURE: "false"
+
+compat_arguments_desc: |
+  MINUTE=分
+  HOUR=时
+  FIXED_LEGS=鸡腿（false=随机 / true=固定5，默认随机）
+  ENABLE_CAPTURE=Cookie 捕获（true 开 / false 关）
+
+env_schema:
+  FIXED_LEGS:
+    name: 鸡腿
+    description: 默认随机鸡腿；开启=固定 5 鸡腿
+    default_value: "false"
+    options:
+      - "false"
+      - "true"
+  ENABLE_CAPTURE:
+    name: Cookie
+    description: 默认关闭；开启后在浏览器登录不同账号并刷新个人页捕获，全部捕获完成后请关闭
+    default_value: "false"
+    options:
+      - "false"
+      - "true"
+
+mitm:
+  hostnames:
+    - www.nodeseek.com
+
+scriptings:
+  - http_response:
+      name: "NodeSeek Cookie 捕获"
+      match: "^https://www\\.nodeseek\\.com/api/account/getInfo/"
+      script_url: "https://raw.githubusercontent.com/Nullwhy/Egern/main/Scripts/NodeSeek.js"
+      body_required: true
+      timeout: 30
+      max_size: 1048576
+      env:
+        ENABLE_CAPTURE: "{{{ENABLE_CAPTURE}}}"
+
+  - schedule:
+      name: "NodeSeek 多账号批量签到"
+      cron: "{{{MINUTE}}} {{{HOUR}}} * * *"
+      timeout: 180
+      script_url: "https://raw.githubusercontent.com/Nullwhy/Egern/main/Scripts/NodeSeek.js"
+      env:
+        MODE: "checkin"
+        FIXED_LEGS: "{{{FIXED_LEGS}}}"
